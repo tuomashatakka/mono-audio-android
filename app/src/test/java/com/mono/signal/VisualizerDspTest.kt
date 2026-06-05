@@ -2,6 +2,7 @@ package com.mono.signal
 
 import com.mono.signal.playback.VisualizerDsp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,6 +36,29 @@ class VisualizerDspTest {
         assertTrue(VisualizerDsp.waveformToFloats(high, 64).all { it > 0.9f })
         val low = ByteArray(64) { 0.toByte() }
         assertTrue(VisualizerDsp.waveformToFloats(low, 64).all { it == -1f })
+    }
+
+    @Test
+    fun frameFromEnvelope_createsVisibleFallbackFrame() {
+        val envelope = FloatArray(256) { i -> if (i % 16 < 8) 0.85f else 0.25f }
+
+        val frame = VisualizerDsp.frameFromEnvelope(envelope, progress = 0.4f, bands = 24, points = 32)
+
+        assertEquals(24, frame.fftBands.size)
+        assertEquals(32, frame.waveform.size)
+        assertTrue(frame.fftBands.any { it > 0f })
+        assertTrue(frame.waveform.any { it > 0f })
+        assertTrue(frame.waveform.any { it < 0f })
+        assertTrue(VisualizerDsp.hasSignal(frame))
+    }
+
+    @Test
+    fun frameFromEnvelope_keepsSilentEnvelopeAtZero() {
+        val frame = VisualizerDsp.frameFromEnvelope(FloatArray(64), progress = 0.5f, bands = 12, points = 8)
+
+        assertEquals(12, frame.fftBands.size)
+        assertEquals(8, frame.waveform.size)
+        assertFalse(VisualizerDsp.hasSignal(frame))
     }
 
     @Test
