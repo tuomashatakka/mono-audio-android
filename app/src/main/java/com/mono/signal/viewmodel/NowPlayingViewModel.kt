@@ -25,12 +25,14 @@ data class NowPlayingUiState(
     val frame: VisualizerFrame = VisualizerFrame.empty(),
     val waveformEnvelope: FloatArray = FloatArray(WaveformReducer.DEFAULT_BUCKETS),
     val graphic: NowPlayingGraphic = NowPlayingGraphic.ALBUM_ART,
+    val visualizerActive: Boolean = false,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is NowPlayingUiState) return false
         return playback == other.playback && frame == other.frame &&
-            waveformEnvelope.contentEquals(other.waveformEnvelope) && graphic == other.graphic
+            waveformEnvelope.contentEquals(other.waveformEnvelope) && graphic == other.graphic &&
+            visualizerActive == other.visualizerActive
     }
 
     override fun hashCode(): Int {
@@ -38,6 +40,7 @@ data class NowPlayingUiState(
         result = 31 * result + frame.hashCode()
         result = 31 * result + waveformEnvelope.contentHashCode()
         result = 31 * result + graphic.hashCode()
+        result = 31 * result + visualizerActive.hashCode()
         return result
     }
 }
@@ -57,8 +60,9 @@ class NowPlayingViewModel @Inject constructor(
         visualizer.frames,
         envelope,
         graphic,
-    ) { playback, frame, env, gfx ->
-        NowPlayingUiState(playback, frame, env, gfx)
+        visualizer.active,
+    ) { playback, frame, env, gfx, active ->
+        NowPlayingUiState(playback, frame, env, gfx, active)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NowPlayingUiState())
 
     init {
@@ -77,6 +81,9 @@ class NowPlayingViewModel @Inject constructor(
     }
 
     fun cycleGraphic() { graphic.value = graphic.value.next() }
+
+    /** Called after the user grants microphone access so the live graphs start capturing. */
+    fun retryVisualizer() = playerController.retryVisualizer()
 
     fun togglePlayPause() = playerController.togglePlayPause()
     fun next() = playerController.next()

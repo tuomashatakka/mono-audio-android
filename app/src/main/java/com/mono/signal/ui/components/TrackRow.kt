@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mono.signal.model.Track
+import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
 import com.mono.signal.ui.theme.MonoTypography
 
@@ -31,21 +32,21 @@ fun TrackRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(horizontal = 4.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         AlbumArt(
             track = track,
             modifier = Modifier
-                .size(44.dp)
+                .size(48.dp)
                 .clip(RoundedCornerShape(2.dp)),
         )
         Column(Modifier.weight(1f)) {
             Text(
                 text = track.title,
                 style = MonoTypography.bodyMedium,
-                color = if (isActive) MonoColors.Turquoise else MonoColors.Fg1,
+                color = if (isActive) LocalMonoPalette.current.accent else MonoColors.Fg1,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

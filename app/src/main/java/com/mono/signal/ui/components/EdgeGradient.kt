@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.mono.signal.ui.theme.MonoTokens
+import com.mono.signal.ui.theme.LocalMonoPalette
 
 /** The thin neon edge line used as a section divider / header underline in the mockup. */
 @Composable
@@ -16,11 +18,18 @@ fun EdgeGradientLine(
     modifier: Modifier = Modifier,
     thickness: Dp = 1.dp,
 ) {
+    val sweep = LocalMonoPalette.current.sweep
+    val edge = Brush.horizontalGradient(
+        0.0f to Color.Transparent,
+        0.22f to sweep.first(),
+        0.78f to sweep.last(),
+        1.0f to Color.Transparent,
+    )
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(thickness)
-            .background(MonoTokens.gradEdge),
+            .background(edge),
     )
 }
 

@@ -1,34 +1,43 @@
 package com.mono.signal.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import com.mono.signal.model.ThemeConfig
 
-private val MonoColorScheme = darkColorScheme(
-    primary = MonoColors.Turquoise,
-    onPrimary = MonoColors.Void,
-    secondary = MonoColors.Violet,
-    tertiary = MonoColors.Crimson,
-    background = MonoColors.Void,
-    onBackground = MonoColors.Fg1,
-    surface = MonoColors.Onyx,
-    onSurface = MonoColors.Fg1,
-    surfaceVariant = MonoColors.Graphite,
-    onSurfaceVariant = MonoColors.Fg3,
-    error = MonoColors.Crimson,
-    outline = MonoColors.BorderSoft,
-)
-
+/**
+ * MONO Signal is dark-only by design. The selected [ThemeConfig] drives both the Material
+ * color scheme and the richer [LocalMonoPalette] that bespoke components read.
+ */
 @Composable
 fun MonoTheme(
-    @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = isSystemInDarkTheme(),
+    config: ThemeConfig = ThemeConfig(),
     content: @Composable () -> Unit,
 ) {
-    // MONO Signal is dark-only by design.
-    MaterialTheme(
-        colorScheme = MonoColorScheme,
-        typography = MonoTypography,
-        content = content,
+    val palette = remember(config) { paletteFor(config) }
+
+    val colorScheme = darkColorScheme(
+        primary = palette.accent,
+        onPrimary = MonoColors.Void,
+        secondary = MonoColors.Violet,
+        tertiary = MonoColors.Crimson,
+        background = palette.background,
+        onBackground = MonoColors.Fg1,
+        surface = palette.panel,
+        onSurface = MonoColors.Fg1,
+        surfaceVariant = palette.panelElevated,
+        onSurfaceVariant = MonoColors.Fg3,
+        error = MonoColors.Crimson,
+        outline = MonoColors.BorderSoft,
     )
+
+    CompositionLocalProvider(LocalMonoPalette provides palette) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = MonoTypography,
+            content = content,
+        )
+    }
 }

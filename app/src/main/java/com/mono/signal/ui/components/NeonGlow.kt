@@ -34,7 +34,7 @@ fun Modifier.circleGlow(color: Color = MonoColors.Turquoise): Modifier =
 fun MonoLabel(
     text: String,
     modifier: Modifier = Modifier,
-    color: Color = MonoColors.Turquoise,
+    color: Color = com.mono.signal.ui.theme.LocalMonoPalette.current.accent,
 ) {
     Box(modifier) {
         Text(

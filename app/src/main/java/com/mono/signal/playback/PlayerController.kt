@@ -70,6 +70,13 @@ class PlayerController @Inject constructor(
         visualizer.release()
     }
 
+    /** Re-attach the visualizer to the current session — e.g. after RECORD_AUDIO is granted. */
+    fun retryVisualizer() {
+        visualizer.release()
+        val id = sessionHolder.sessionId.value
+        if (id != 0) visualizer.start(id)
+    }
+
     /** Replace the queue with [tracks] and start at [startIndex]. */
     fun play(tracks: List<Track>, startIndex: Int) {
         val c = controller ?: return
