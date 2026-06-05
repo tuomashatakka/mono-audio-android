@@ -1,6 +1,9 @@
 # Gradle files
 .gradle/
 build/
+# ...but not the composite GitHub Action that happens to be named "build"
+!.github/actions/build/
+!.github/actions/build/**
 
 # Local configuration file (sdk path, etc)
 local.properties
