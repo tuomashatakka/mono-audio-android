@@ -50,6 +50,29 @@ object WaveformReducer {
         fun build(): FloatArray = normalize(peaks)
     }
 
+    /**
+     * Resample an envelope to exactly [target] buckets, taking the peak of each source
+     * segment. Used to fit a long stored envelope to however many bars actually fit on
+     * screen. Returns [src] unchanged when it already matches or is empty.
+     */
+    fun resample(src: FloatArray, target: Int): FloatArray {
+        if (target <= 0) return FloatArray(0)
+        if (src.isEmpty() || src.size == target) return src
+        val out = FloatArray(target)
+        for (i in 0 until target) {
+            val from = (i.toLong() * src.size / target).toInt()
+            val to = ((i + 1).toLong() * src.size / target).toInt().coerceAtLeast(from + 1)
+            var peak = 0f
+            var k = from
+            while (k < to && k < src.size) {
+                if (src[k] > peak) peak = src[k]
+                k++
+            }
+            out[i] = peak
+        }
+        return out
+    }
+
     /** Scale peaks so the loudest bucket reaches 1.0; leaves silence as zeros. */
     fun normalize(peaks: FloatArray): FloatArray {
         var maxPeak = 0f

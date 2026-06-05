@@ -33,6 +33,25 @@ class WaveformReducerTest {
     }
 
     @Test
+    fun resample_downsamplesToTargetTakingPeaks() {
+        val src = floatArrayOf(0f, 1f, 0f, 0f, 0.5f, 0f, 0f, 0.25f)
+        val out = WaveformReducer.resample(src, 4)
+        assertEquals(4, out.size)
+        // Each pair's peak: (0,1)->1, (0,0)->0, (0.5,0)->0.5, (0,0.25)->0.25
+        assertEquals(1f, out[0], 1e-4f)
+        assertEquals(0f, out[1], 1e-4f)
+        assertEquals(0.5f, out[2], 1e-4f)
+        assertEquals(0.25f, out[3], 1e-4f)
+    }
+
+    @Test
+    fun resample_returnsSourceWhenSizesMatchOrEmpty() {
+        val src = floatArrayOf(0.1f, 0.2f)
+        assertEquals(2, WaveformReducer.resample(src, 2).size)
+        assertEquals(0, WaveformReducer.resample(FloatArray(0), 8).size)
+    }
+
+    @Test
     fun accumulator_averagesStereoChannels() {
         val acc = WaveformReducer.Accumulator(totalFrames = 4, buckets = 4)
         // L=full, R=0 -> mono average is half scale.

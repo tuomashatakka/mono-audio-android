@@ -1,5 +1,6 @@
 package com.mono.signal.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,14 +16,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.mono.signal.data.waveform.WaveformReducer
 import com.mono.signal.ui.theme.MonoColors
-import androidx.compose.foundation.Canvas
-import kotlin.math.roundToInt
 
 /**
  * Mirror-style amplitude waveform with a neon gradient fill up to [progress]. Tapping or
  * dragging reports a 0..1 [onSeek] fraction. Stateless — envelope + progress come in,
  * seek intents go out.
+ *
+ * Bars are sized to the available width (a fixed dp pitch), and the stored envelope is
+ * resampled to exactly that many bars, so the track never overflows the canvas regardless
+ * of how many samples the decoder produced.
  */
 @Composable
 fun WaveformSeekBar(
@@ -37,7 +41,7 @@ fun WaveformSeekBar(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(64.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     onSeek((offset.x / size.width).coerceIn(0f, 1f))
@@ -57,22 +61,23 @@ fun WaveformSeekBar(
                 )
             },
     ) {
-        val bars = if (envelope.isNotEmpty()) envelope.size else 1
+        val barWidth = 3.dp.toPx()
         val gap = 2.dp.toPx()
-        val barWidth = ((size.width - gap * (bars - 1)) / bars).coerceAtLeast(1f)
-        val midY = size.height / 2f
-        val playedBars = (shown * bars).roundToInt()
-        val fill = Brush.horizontalGradient(
-            listOf(MonoColors.Turquoise, MonoColors.Violet, MonoColors.Crimson),
-        )
+        val pitch = barWidth + gap
+        val barCount = (size.width / pitch).toInt().coerceIn(1, 512)
 
-        for (i in 0 until bars) {
-            val amp = if (envelope.isNotEmpty()) envelope[i] else 0.05f
-            val barHeight = (amp * size.height).coerceAtLeast(2f)
-            val x = i * (barWidth + gap) + barWidth / 2f
-            val played = i <= playedBars
+        val bars = WaveformReducer.resample(envelope, barCount)
+        val midY = size.height / 2f
+        val maxBarHeight = size.height - 4.dp.toPx()
+        val minBarHeight = 3.dp.toPx()
+        val playedX = shown * size.width
+
+        for (i in 0 until barCount) {
+            val amp = if (bars.isNotEmpty()) bars[i.coerceIn(0, bars.size - 1)] else 0f
+            val barHeight = (amp * maxBarHeight).coerceAtLeast(minBarHeight)
+            val x = i * pitch + barWidth / 2f
             drawLine(
-                brush = if (played) fill else dimBrush,
+                brush = if (x <= playedX) fillBrush else dimBrush,
                 start = Offset(x, midY - barHeight / 2f),
                 end = Offset(x, midY + barHeight / 2f),
                 strokeWidth = barWidth,
@@ -81,6 +86,10 @@ fun WaveformSeekBar(
         }
     }
 }
+
+private val fillBrush = Brush.horizontalGradient(
+    listOf(MonoColors.Turquoise, MonoColors.Violet, MonoColors.Crimson),
+)
 
 private val dimBrush = Brush.verticalGradient(
     listOf(MonoColors.Fog, MonoColors.Slate),

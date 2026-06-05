@@ -22,6 +22,10 @@ class AudioVisualizer @Inject constructor() {
     private val _frames = MutableStateFlow(VisualizerFrame.empty())
     val frames: StateFlow<VisualizerFrame> = _frames.asStateFlow()
 
+    /** True while a Visualizer is attached and capturing (i.e. the live graphs have data). */
+    private val _active = MutableStateFlow(false)
+    val active: StateFlow<Boolean> = _active.asStateFlow()
+
     private var visualizer: Visualizer? = null
     private var currentSession = 0
     private var smoothedBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
@@ -39,7 +43,11 @@ class AudioVisualizer @Inject constructor() {
                 enabled = true
             }
             currentSession = sessionId
-        }.onFailure { Log.w(TAG, "Visualizer unavailable for session $sessionId", it) }
+            _active.value = true
+        }.onFailure {
+            Log.w(TAG, "Visualizer unavailable for session $sessionId", it)
+            _active.value = false
+        }
     }
 
     @Synchronized
@@ -50,6 +58,7 @@ class AudioVisualizer @Inject constructor() {
         }
         visualizer = null
         currentSession = 0
+        _active.value = false
         smoothedBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
         lastWaveform = FloatArray(VisualizerDsp.DEFAULT_WAVE_POINTS)
         _frames.value = VisualizerFrame.empty()

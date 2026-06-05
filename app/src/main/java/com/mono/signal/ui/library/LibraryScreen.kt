@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
@@ -37,15 +38,15 @@ fun LibraryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
+            .statusBarsPadding()
+            .padding(horizontal = 24.dp),
     ) {
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
         MonoLabel("— OVERVIEW")
-        Spacer(Modifier.height(6.dp))
-        Text("Library", style = MonoTypography.displaySmall, color = MonoColors.Fg1)
-        Spacer(Modifier.height(12.dp))
-        EdgeGradientLine()
         Spacer(Modifier.height(8.dp))
+        Text("Library", style = MonoTypography.displaySmall, color = MonoColors.Fg1)
+        Spacer(Modifier.height(16.dp))
+        EdgeGradientLine()
 
         when {
             !state.permissionGranted -> PermissionPrompt(onRequestPermission)

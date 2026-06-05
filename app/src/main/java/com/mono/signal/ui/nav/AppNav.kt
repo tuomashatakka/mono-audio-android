@@ -4,6 +4,7 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
@@ -12,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,6 +72,8 @@ fun AppNav() {
                         navController.navigate(Routes.NOW_PLAYING)
                     },
                     onRequestPermission = { launcher.launch(REQUIRED_PERMISSIONS) },
+                    // Leave room so the mini-player never covers the last row.
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 112.dp),
                 )
             }
             composable(Routes.NOW_PLAYING) {
@@ -83,6 +87,7 @@ fun AppNav() {
                     onSeek = nowPlayingViewModel::seek,
                     onShuffle = nowPlayingViewModel::toggleShuffle,
                     onRepeat = nowPlayingViewModel::cycleRepeat,
+                    onEnableVisualizer = { launcher.launch(REQUIRED_PERMISSIONS) },
                 )
             }
         }
