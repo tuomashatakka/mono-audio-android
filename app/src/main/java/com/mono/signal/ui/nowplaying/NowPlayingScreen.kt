@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,9 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,6 +60,8 @@ fun NowPlayingScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onSeek: (Float) -> Unit,
+    onScrub: (Float, Float) -> Unit,
+    onScrubEnd: () -> Unit,
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
     onEnableVisualizer: () -> Unit,
@@ -66,13 +69,22 @@ fun NowPlayingScreen(
 ) {
     val palette = LocalMonoPalette.current
     val playback = state.playback
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 28.dp),
-    ) {
+    var showTags by remember { mutableStateOf(false) }
+    Box(modifier = modifier.fillMaxSize()) {
+        AlbumArt(
+            track = playback.currentTrack,
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(54.dp)
+                .alpha(0.14f),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(top = 68.dp, start = 28.dp, end = 28.dp),
+        ) {
         // Header: caret back · NOW PLAYING · more
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -82,7 +94,7 @@ fun NowPlayingScreen(
             Spacer(Modifier.weight(1f))
             MonoLabel("— NOW PLAYING", color = palette.accent)
             Spacer(Modifier.weight(1f))
-            MonoIconButton(MonoGlyph.MORE, "More", {}, bordered = true, accent = palette.accent)
+            MonoIconButton(MonoGlyph.MORE, "More", { showTags = true }, bordered = true, accent = palette.accent)
         }
 
         Spacer(Modifier.height(32.dp))
@@ -92,10 +104,10 @@ fun NowPlayingScreen(
             audioGranted = audioGranted,
             onTap = onCycleGraphic,
             onEnableVisualizer = onEnableVisualizer,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            modifier = Modifier.fillMaxWidth(0.82f).aspectRatio(1f).align(Alignment.CenterHorizontally),
         )
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Title + favourite
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -130,6 +142,8 @@ fun NowPlayingScreen(
             envelope = state.waveformEnvelope,
             progress = playback.progress,
             onSeek = onSeek,
+            onScrub = onScrub,
+            onScrubEnd = onScrubEnd,
         )
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -140,7 +154,7 @@ fun NowPlayingScreen(
 
         Spacer(Modifier.weight(1f))
 
-        TransportControls(
+            TransportControls(
             isPlaying = playback.isPlaying,
             shuffle = playback.shuffle,
             repeatMode = playback.repeatMode,
@@ -149,8 +163,18 @@ fun NowPlayingScreen(
             onNext = onNext,
             onShuffle = onShuffle,
             onRepeat = onRepeat,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
         )
+        }
+        if (showTags) {
+            FileTagsDialog(
+                title = playback.currentTrack?.title.orEmpty(),
+                artist = playback.currentTrack?.artist.orEmpty(),
+                album = playback.currentTrack?.album.orEmpty(),
+                path = playback.currentTrack?.filePath.orEmpty(),
+                onDismiss = { showTags = false },
+            )
+        }
     }
 }
 
@@ -165,8 +189,7 @@ private fun GraphicArea(
     val palette = LocalMonoPalette.current
     Box(
         modifier = modifier
-            .background(palette.panel)
-            .cornerBrackets(palette.accent)
+            .background(palette.panel.copy(alpha = 0.82f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -177,14 +200,15 @@ private fun GraphicArea(
             when (graphic) {
                 NowPlayingGraphic.ALBUM_ART -> AlbumArt(
                     track = state.playback.currentTrack,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(8.dp),
                 )
                 NowPlayingGraphic.WAVE_3D -> Waveform3DGraph(
                     waveform = state.frame.waveform,
                     modifier = Modifier.fillMaxSize().padding(18.dp),
                 )
                 NowPlayingGraphic.FFT -> FftGraph(
-                    bands = state.frame.fftBands,
+                    peakBands = state.frame.fftPeakBands,
+                    rmsBands = state.frame.fftRmsBands,
                     modifier = Modifier.fillMaxSize().padding(18.dp),
                 )
             }
@@ -221,18 +245,29 @@ private fun VisualizerHint(onEnable: () -> Unit, accent: androidx.compose.ui.gra
     }
 }
 
-/** Holographic L-marks at each corner, per the mockup's "corner brackets" chrome. */
-private fun Modifier.cornerBrackets(color: androidx.compose.ui.graphics.Color): Modifier = drawBehind {
-    val len = 18.dp.toPx()
-    val stroke = 1.5.dp.toPx()
-    val w = size.width
-    val h = size.height
-    drawLine(color, Offset(0f, 0f), Offset(len, 0f), stroke, StrokeCap.Round)
-    drawLine(color, Offset(0f, 0f), Offset(0f, len), stroke, StrokeCap.Round)
-    drawLine(color, Offset(w, 0f), Offset(w - len, 0f), stroke, StrokeCap.Round)
-    drawLine(color, Offset(w, 0f), Offset(w, len), stroke, StrokeCap.Round)
-    drawLine(color, Offset(0f, h), Offset(len, h), stroke, StrokeCap.Round)
-    drawLine(color, Offset(0f, h), Offset(0f, h - len), stroke, StrokeCap.Round)
-    drawLine(color, Offset(w, h), Offset(w - len, h), stroke, StrokeCap.Round)
-    drawLine(color, Offset(w, h), Offset(w, h - len), stroke, StrokeCap.Round)
+@Composable
+private fun FileTagsDialog(
+    title: String,
+    artist: String,
+    album: String,
+    path: String,
+    onDismiss: () -> Unit,
+) {
+    var editTitle by remember(title) { mutableStateOf(title) }
+    var editArtist by remember(artist) { mutableStateOf(artist) }
+    var editAlbum by remember(album) { mutableStateOf(album) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("SAVE") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL") } },
+        title = { Text("File meta tags", color = MonoColors.Fg1) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = editTitle, onValueChange = { editTitle = it }, label = { Text("Title") })
+                OutlinedTextField(value = editArtist, onValueChange = { editArtist = it }, label = { Text("Artist") })
+                OutlinedTextField(value = editAlbum, onValueChange = { editAlbum = it }, label = { Text("Album") })
+                Text(path.ifBlank { "No file path available" }, style = MonoTypography.bodySmall, color = MonoColors.Fg3)
+            }
+        },
+    )
 }

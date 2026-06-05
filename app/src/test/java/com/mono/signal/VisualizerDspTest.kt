@@ -24,6 +24,16 @@ class VisualizerDspTest {
     }
 
     @Test
+    fun fftToPeakAndRmsBands_returnsSeparateNormalizedTraces() {
+        val fft = ByteArray(512) { ((it * 11) % 96 - 48).toByte() }
+        val spectrum = VisualizerDsp.fftToPeakAndRmsBands(fft, bands = 24)
+        assertEquals(24, spectrum.peak.size)
+        assertEquals(24, spectrum.rms.size)
+        assertTrue(spectrum.peak.all { it in 0f..1f })
+        assertTrue(spectrum.rms.all { it in 0f..1f })
+    }
+
+    @Test
     fun waveformToFloats_centersUnsignedPcmAroundZero() {
         // 128 is the unsigned PCM midpoint -> 0f.
         val mid = ByteArray(64) { 128.toByte() }

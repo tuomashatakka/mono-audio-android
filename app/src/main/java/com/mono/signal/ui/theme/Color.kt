@@ -25,6 +25,9 @@ object MonoColors {
     val CrimsonGlow = Color(0xFFFF6AA8)
     val Violet = Color(0xFFC8B6FF)
     val Info = Color(0xFF5CD1FF)
+    val Amber = Color(0xFFFFC857)
+    val Lime = Color(0xFFB8FF5C)
+    val Rose = Color(0xFFFF8FB8)
 
     // Hairlines
     val BorderHairline = Color(0x0FFFFFFF) // rgba(255,255,255,.06)

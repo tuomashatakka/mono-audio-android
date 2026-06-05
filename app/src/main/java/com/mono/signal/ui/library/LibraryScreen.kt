@@ -1,6 +1,7 @@
 package com.mono.signal.ui.library
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,13 +63,14 @@ fun LibraryScreen(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
+    val collapsed = remember(state.groupBy) { mutableStateListOf<String>() }
     Column(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .padding(horizontal = 28.dp),
     ) {
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(92.dp))
 
         // Header row: overview label + sort / group / settings on the right edge.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -89,25 +93,64 @@ fun LibraryScreen(
             state.flatTracks.isEmpty() && !state.loading -> EmptyState()
             else -> LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = contentPadding) {
                 state.groups.forEach { group ->
-                    group.header?.let { header ->
-                        item(key = "h_$header") {
-                            Text(
-                                header.uppercase(),
-                                style = MonoLabelStyle,
-                                color = MonoColors.Fg3,
-                                modifier = Modifier.padding(top = 20.dp, bottom = 6.dp),
+                    val header = group.header
+                    val isCollapsed = header != null && collapsed.contains(header)
+                    header?.let { title ->
+                        item(key = "h_$title") {
+                            GroupHeader(
+                                title = title,
+                                count = group.tracks.size,
+                                collapsed = isCollapsed,
+                                accent = palette.accent,
+                                onClick = {
+                                    if (collapsed.contains(title)) collapsed.remove(title) else collapsed.add(title)
+                                },
                             )
                         }
                     }
-                    items(group.tracks, key = { it.id }) { track ->
-                        TrackRow(
-                            track = track,
-                            isActive = track.mediaId == state.activeTrackId,
-                            onClick = { onTrackClick(track) },
-                        )
+                    if (!isCollapsed) {
+                        items(group.tracks, key = { it.id }) { track ->
+                            TrackRow(
+                                track = track,
+                                isActive = track.mediaId == state.activeTrackId,
+                                onClick = { onTrackClick(track) },
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GroupHeader(
+    title: String,
+    count: Int,
+    collapsed: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        MonoIconButton(
+            glyph = if (collapsed) MonoGlyph.CARET_RIGHT else MonoGlyph.CARET_LEFT,
+            contentDescription = if (collapsed) "Expand group" else "Collapse group",
+            onClick = onClick,
+            size = 48.dp,
+            iconSize = 18.dp,
+            bordered = true,
+            accent = accent,
+        )
+        Column(Modifier.weight(1f)) {
+            Text(title.uppercase(), style = MonoLabelStyle, color = accent, maxLines = 1)
+            Text("$count TRACKS", style = MonoTypography.bodySmall, color = MonoColors.Fg3, maxLines = 1)
         }
     }
 }

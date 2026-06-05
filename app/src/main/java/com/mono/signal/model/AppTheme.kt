@@ -5,7 +5,10 @@ enum class AccentOption(val label: String) {
     TURQUOISE("Turquoise"),
     CRIMSON("Crimson"),
     VIOLET("Violet"),
-    BLUE("Signal blue");
+    BLUE("Signal blue"),
+    AMBER("Amber"),
+    LIME("Lime"),
+    ROSE("Rose");
 }
 
 /** Selectable base background (2 variants): the deep void, or a lighter graphite. */

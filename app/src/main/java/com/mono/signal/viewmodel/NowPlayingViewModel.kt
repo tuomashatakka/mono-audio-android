@@ -95,6 +95,8 @@ class NowPlayingViewModel @Inject constructor(
     fun next() = playerController.next()
     fun previous() = playerController.previous()
     fun seek(fraction: Float) = playerController.seekToFraction(fraction)
+    fun scrub(fraction: Float, rate: Float) = playerController.scrubToFraction(fraction, rate)
+    fun endScrub() = playerController.endScrub()
     fun toggleShuffle() = playerController.toggleShuffle()
     fun cycleRepeat() = playerController.cycleRepeat()
 }

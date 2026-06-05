@@ -15,8 +15,10 @@ import kotlin.math.sin
  */
 object VisualizerDsp {
 
+    data class SpectrumBands(val peak: FloatArray, val rms: FloatArray)
+
     const val DEFAULT_BANDS = 48
-    const val DEFAULT_WAVE_POINTS = 64
+    const val DEFAULT_WAVE_POINTS = 96
 
 
     /** True when a captured or synthesized frame has visible waveform/FFT energy. */
@@ -102,9 +104,13 @@ object VisualizerDsp {
      * index 1 is the Nyquist real part, and thereafter pairs (2k, 2k+1) are the real and
      * imaginary parts of bin k.
      */
-    fun fftToBands(fft: ByteArray, bands: Int = DEFAULT_BANDS): FloatArray {
-        val out = FloatArray(bands)
-        if (fft.size < 4) return out
+    fun fftToBands(fft: ByteArray, bands: Int = DEFAULT_BANDS): FloatArray = fftToPeakAndRmsBands(fft, bands).peak
+
+    /** Convert a Visualizer FFT buffer into separate peak and RMS band traces. */
+    fun fftToPeakAndRmsBands(fft: ByteArray, bands: Int = DEFAULT_BANDS): SpectrumBands {
+        val peakOut = FloatArray(bands)
+        val rmsOut = FloatArray(bands)
+        if (fft.size < 4) return SpectrumBands(peakOut, rmsOut)
 
         val binCount = fft.size / 2
         val magnitudes = FloatArray(binCount)
@@ -123,11 +129,19 @@ object VisualizerDsp {
             val from = lo.toInt().coerceIn(1, binCount - 1)
             val to = hi.toInt().coerceIn(from + 1, binCount)
             var peak = 0f
-            for (k in from until to) if (magnitudes[k] > peak) peak = magnitudes[k]
-            // Log-compress magnitude into a pleasant 0..1 range.
-            out[b] = (ln(1f + peak) / LOG_SCALE).coerceIn(0f, 1f)
+            var sumSquares = 0f
+            var count = 0
+            for (k in from until to) {
+                val magnitude = magnitudes[k]
+                if (magnitude > peak) peak = magnitude
+                sumSquares += magnitude * magnitude
+                count++
+            }
+            val rms = kotlin.math.sqrt(sumSquares / count.coerceAtLeast(1))
+            peakOut[b] = (ln(1f + peak) / LOG_SCALE).coerceIn(0f, 1f)
+            rmsOut[b] = (ln(1f + rms) / LOG_SCALE).coerceIn(0f, 1f)
         }
-        return out
+        return SpectrumBands(peakOut, rmsOut)
     }
 
     /**
