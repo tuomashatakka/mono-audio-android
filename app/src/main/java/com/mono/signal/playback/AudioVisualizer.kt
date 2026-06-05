@@ -28,7 +28,8 @@ class AudioVisualizer @Inject constructor() {
 
     private var visualizer: Visualizer? = null
     private var currentSession = 0
-    private var smoothedBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
+    private var smoothedPeakBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
+    private var smoothedRmsBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
     private var lastWaveform = FloatArray(VisualizerDsp.DEFAULT_WAVE_POINTS)
 
     @Synchronized
@@ -59,7 +60,8 @@ class AudioVisualizer @Inject constructor() {
         visualizer = null
         currentSession = 0
         _active.value = false
-        smoothedBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
+        smoothedPeakBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
+        smoothedRmsBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
         lastWaveform = FloatArray(VisualizerDsp.DEFAULT_WAVE_POINTS)
         _frames.value = VisualizerFrame.empty()
     }
@@ -73,14 +75,20 @@ class AudioVisualizer @Inject constructor() {
 
         override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
             fft ?: return
-            val target = VisualizerDsp.fftToBands(fft)
-            smoothedBands = VisualizerDsp.smooth(smoothedBands, target)
+            val target = VisualizerDsp.fftToPeakAndRmsBands(fft)
+            smoothedPeakBands = VisualizerDsp.smooth(smoothedPeakBands, target.peak)
+            smoothedRmsBands = VisualizerDsp.smooth(smoothedRmsBands, target.rms, attack = 0.42f, decay = 0.18f)
             emit()
         }
     }
 
     private fun emit() {
-        _frames.value = VisualizerFrame(smoothedBands.copyOf(), lastWaveform.copyOf())
+        _frames.value = VisualizerFrame(
+            fftBands = smoothedPeakBands.copyOf(),
+            waveform = lastWaveform.copyOf(),
+            fftPeakBands = smoothedPeakBands.copyOf(),
+            fftRmsBands = smoothedRmsBands.copyOf(),
+        )
     }
 
     private companion object {

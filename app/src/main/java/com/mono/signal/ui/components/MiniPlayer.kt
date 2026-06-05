@@ -1,5 +1,6 @@
 package com.mono.signal.ui.components
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,37 +21,42 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mono.signal.model.PlaybackState
+import com.mono.signal.ui.icons.MonoGlyph
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
 import com.mono.signal.ui.theme.MonoTypography
 
-/** Persistent bottom bar: thumb · title/artist · play-pause, with a thin neon progress line. */
+/** Persistent playback bar with minified gradient progress and compact transport controls. */
 @Composable
 fun MiniPlayer(
     state: PlaybackState,
     onClick: () -> Unit,
     onPlayPause: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    onPrevious: () -> Unit = {},
+    onNext: () -> Unit = {},
 ) {
     val track = state.currentTrack ?: return
     val palette = LocalMonoPalette.current
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(palette.panel)
-            .clickable(onClick = onClick),
+            .background(palette.panel.copy(alpha = if (compact) 0.74f else 1f))
+            .clickable(onClick = onClick)
+            .animateContentSize(),
     ) {
         ProgressLine(progress = state.progress, palette.sweep)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             AlbumArt(
                 track = track,
-                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(2.dp)),
+                modifier = Modifier.size(if (compact) 34.dp else 40.dp).clip(RoundedCornerShape(2.dp)),
             )
             Column(Modifier.weight(1f)) {
                 Text(
@@ -61,19 +67,23 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    track.artist,
+                    track.album.ifBlank { track.artist },
                     style = MonoTypography.bodySmall,
                     color = MonoColors.Fg3,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            MonoPlayButton(
-                isPlaying = state.isPlaying,
-                onClick = onPlayPause,
-                accent = palette.accent,
-                size = 44.dp,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                MonoIconButton(MonoGlyph.PREV, "Previous", onPrevious, size = if (compact) 34.dp else 38.dp, iconSize = 16.dp)
+                MonoPlayButton(
+                    isPlaying = state.isPlaying,
+                    onClick = onPlayPause,
+                    accent = palette.accent,
+                    size = if (compact) 40.dp else 44.dp,
+                )
+                MonoIconButton(MonoGlyph.NEXT, "Next", onNext, size = if (compact) 34.dp else 38.dp, iconSize = 16.dp)
+            }
         }
     }
 }

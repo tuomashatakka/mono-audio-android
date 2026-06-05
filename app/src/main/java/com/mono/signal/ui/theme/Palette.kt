@@ -32,12 +32,18 @@ fun paletteFor(config: ThemeConfig): MonoPalette {
         AccentOption.CRIMSON -> MonoColors.Crimson
         AccentOption.VIOLET -> MonoColors.Violet
         AccentOption.BLUE -> MonoColors.Info
+        AccentOption.AMBER -> MonoColors.Amber
+        AccentOption.LIME -> MonoColors.Lime
+        AccentOption.ROSE -> MonoColors.Rose
     }
     val accentGlow = when (config.accent) {
         AccentOption.TURQUOISE -> MonoColors.TurquoiseGlow
         AccentOption.CRIMSON -> MonoColors.CrimsonGlow
         AccentOption.VIOLET -> MonoColors.Violet
         AccentOption.BLUE -> MonoColors.Info
+        AccentOption.AMBER -> MonoColors.Amber
+        AccentOption.LIME -> MonoColors.Lime
+        AccentOption.ROSE -> MonoColors.Rose
     }
     // Signature sweep always reads accent → violet → a complementary, so the gradient stays rich.
     val sweep = when (config.accent) {
@@ -45,6 +51,9 @@ fun paletteFor(config: ThemeConfig): MonoPalette {
         AccentOption.CRIMSON -> listOf(MonoColors.Crimson, MonoColors.Violet, MonoColors.Turquoise)
         AccentOption.VIOLET -> listOf(MonoColors.Violet, MonoColors.Info, MonoColors.Turquoise)
         AccentOption.BLUE -> listOf(MonoColors.Info, MonoColors.Violet, MonoColors.Turquoise)
+        AccentOption.AMBER -> listOf(MonoColors.Amber, MonoColors.Crimson, MonoColors.Violet)
+        AccentOption.LIME -> listOf(MonoColors.Lime, MonoColors.Turquoise, MonoColors.Info)
+        AccentOption.ROSE -> listOf(MonoColors.Rose, MonoColors.Crimson, MonoColors.Amber)
     }
     return when (config.background) {
         BackgroundOption.VOID -> MonoPalette(

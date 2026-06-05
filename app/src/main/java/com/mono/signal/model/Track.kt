@@ -14,6 +14,9 @@ data class Track(
     val album: String,
     val durationMs: Long,
     val albumId: Long,
+    val filePath: String = "",
+    val folder: String = "",
+    val dateAddedSeconds: Long = 0L,
 ) {
     val mediaId: String get() = id.toString()
 }

@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
@@ -102,6 +103,20 @@ class PlayerController @Inject constructor(
         val c = controller ?: return
         val duration = c.duration
         if (duration > 0) c.seekTo((duration * fraction.coerceIn(0f, 1f)).toLong())
+    }
+
+    /** Continuous scrubbing: seek while preserving playback and bend speed to match drag direction. */
+    fun scrubToFraction(fraction: Float, signedRate: Float) {
+        val c = controller ?: return
+        val duration = c.duration
+        if (duration > 0) c.seekTo((duration * fraction.coerceIn(0f, 1f)).toLong())
+        val speed = (1f + kotlin.math.abs(signedRate) * 0.45f).coerceIn(0.65f, 2.35f)
+        c.playbackParameters = PlaybackParameters(speed, 1f)
+        if (!c.isPlaying) c.play()
+    }
+
+    fun endScrub() {
+        controller?.playbackParameters = PlaybackParameters(1f, 1f)
     }
 
     fun toggleShuffle() {
