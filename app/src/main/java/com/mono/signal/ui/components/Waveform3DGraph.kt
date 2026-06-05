@@ -21,46 +21,62 @@ import com.mono.signal.ui.theme.LocalMonoPalette
 private const val FRAMES = 56
 
 /**
- * Serum-style wavetable terrain. Wave history is refreshed with short tweens and adjacent
- * wave rows are connected by translucent mesh planes instead of disconnected guide lines.
+ * Serum-style wavetable terrain, split per channel. Each captured frame is pushed into a depth
+ * stack and every row is drawn twice — left channel in one colour, right in another — so the
+ * phase difference between channels reads directly off the divergence of the two coloured lines.
+ *
+ * Wave history is refreshed at ~60Hz with short tweens; a faint mesh under the left channel keeps
+ * the 3D terrain feel without burying the per-channel traces.
  */
 @Composable
 fun Waveform3DGraph(
-    waveform: FloatArray,
+    waveformLeft: FloatArray,
+    waveformRight: FloatArray,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
-    val near = palette.sweep.firstOrNull() ?: palette.accent
-    val mid = palette.sweep.getOrElse(1) { palette.accent }
-    val far = palette.sweep.lastOrNull() ?: palette.accent
+    // Left/right take the two ends of the signature sweep so they stay distinct on every accent.
+    val leftColor = palette.sweep.firstOrNull() ?: palette.accent
+    val rightColor = palette.sweep.lastOrNull() ?: palette.accent
+    val meshColor = lerp(leftColor, rightColor, 0.5f)
 
-    val history = remember { mutableStateListOf<FloatArray>() }
+    val history = remember { mutableStateListOf<Pair<FloatArray, FloatArray>>() }
     val frameTween = remember { Animatable(1f) }
-    LaunchedEffect(waveform) {
-        history.add(0, waveform.copyOf())
+    LaunchedEffect(waveformLeft, waveformRight) {
+        history.add(0, waveformLeft.copyOf() to waveformRight.copyOf())
         while (history.size > FRAMES) history.removeAt(history.lastIndex)
         frameTween.snapTo(0f)
-        frameTween.animateTo(1f, tween(33, easing = LinearEasing))
+        frameTween.animateTo(1f, tween(16, easing = LinearEasing))
     }
 
     val tween = frameTween.value
     Canvas(modifier = modifier.fillMaxSize()) {
         if (history.isEmpty()) return@Canvas
+        // Terrain mesh follows the left channel so the surface stays coherent behind both traces.
         for (idx in history.lastIndex - 1 downTo 0) {
-            drawMeshBand(history[idx + 1], history[idx], (idx + 1) / history.size.toFloat(), idx / history.size.toFloat(), near, mid, far)
+            drawMeshBand(
+                history[idx + 1].first,
+                history[idx].first,
+                (idx + 1) / history.size.toFloat(),
+                idx / history.size.toFloat(),
+                meshColor,
+            )
         }
         for (idx in history.lastIndex downTo 0) {
-            drawFrame(history[idx], idx / (history.size - 1f).coerceAtLeast(1f), near, mid, far, tween)
+            val depth = idx / (history.size - 1f).coerceAtLeast(1f)
+            // Draw the rear channel first so the front (most recent) rows stay legible on top.
+            drawFrame(history[idx].second, depth, rightColor, tween)
+            drawFrame(history[idx].first, depth, leftColor, tween)
         }
     }
 }
 
-private fun DrawScope.drawMeshBand(back: FloatArray, front: FloatArray, backDepth: Float, frontDepth: Float, near: Color, mid: Color, far: Color) {
+private fun DrawScope.drawMeshBand(back: FloatArray, front: FloatArray, backDepth: Float, frontDepth: Float, color: Color) {
     if (back.isEmpty() || front.isEmpty()) return
     val samples = minOf(back.size, front.size).coerceAtLeast(2)
     val frontPoints = pointsFor(front, frontDepth, samples)
     val backPoints = pointsFor(back, backDepth, samples)
-    val color = colorForDepth((frontDepth + backDepth) / 2f, near, mid, far).copy(alpha = 0.055f)
+    val bandColor = color.copy(alpha = 0.05f)
     for (i in 0 until samples - 1) {
         val path = Path().apply {
             moveTo(frontPoints[i].x, frontPoints[i].y)
@@ -69,18 +85,18 @@ private fun DrawScope.drawMeshBand(back: FloatArray, front: FloatArray, backDept
             lineTo(backPoints[i].x, backPoints[i].y)
             close()
         }
-        drawPath(path, color)
+        drawPath(path, bandColor)
     }
 }
 
-private fun DrawScope.drawFrame(frame: FloatArray, depth: Float, near: Color, mid: Color, far: Color, tween: Float) {
+private fun DrawScope.drawFrame(frame: FloatArray, depth: Float, color: Color, tween: Float) {
     if (frame.isEmpty()) return
     val points = pointsFor(frame, depth, frame.size)
-    val color = colorForDepth(depth, near, mid, far).copy(alpha = ((0.92f - 0.82f * depth) * (0.7f + tween * 0.3f)).coerceIn(0.08f, 0.92f))
+    val traceColor = color.copy(alpha = ((0.92f - 0.82f * depth) * (0.7f + tween * 0.3f)).coerceIn(0.08f, 0.92f))
     val path = Path().apply {
         points.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
     }
-    drawPath(path, color, style = Stroke(width = (2.4f - 1.45f * depth).coerceAtLeast(0.8f), cap = StrokeCap.Round))
+    drawPath(path, traceColor, style = Stroke(width = (2.2f - 1.4f * depth).coerceAtLeast(0.8f), cap = StrokeCap.Round))
 }
 
 private data class MeshPoint(val x: Float, val y: Float)
@@ -98,9 +114,4 @@ private fun DrawScope.pointsFor(frame: FloatArray, depth: Float, samples: Int): 
         val src = (i * (frame.size - 1f) / (samples - 1).coerceAtLeast(1)).toInt().coerceIn(0, frame.lastIndex)
         MeshPoint(left + i * stepX, baseY - frame[src] * ampScale)
     }
-}
-
-private fun colorForDepth(depth: Float, near: Color, mid: Color, far: Color): Color = when {
-    depth < 0.5f -> lerp(near, mid, depth * 2f)
-    else -> lerp(mid, far, (depth - 0.5f) * 2f)
 }

@@ -203,7 +203,8 @@ private fun GraphicArea(
                     modifier = Modifier.fillMaxSize().padding(8.dp),
                 )
                 NowPlayingGraphic.WAVE_3D -> Waveform3DGraph(
-                    waveform = state.frame.waveform,
+                    waveformLeft = state.frame.waveformLeft,
+                    waveformRight = state.frame.waveformRight,
                     modifier = Modifier.fillMaxSize().padding(18.dp),
                 )
                 NowPlayingGraphic.FFT -> FftGraph(
@@ -214,9 +215,10 @@ private fun GraphicArea(
             }
         }
 
-        // Only show the mic prompt when the permission is actually missing.
-        if (state.graphic != NowPlayingGraphic.ALBUM_ART && !audioGranted) {
-            VisualizerHint(onEnableVisualizer, palette.accent, Modifier.align(Alignment.Center))
+        // Live visuals are read straight from the player's PCM output (no mic permission needed),
+        // so the only time there's nothing to show is when no track is loaded.
+        if (state.graphic != NowPlayingGraphic.ALBUM_ART && state.playback.currentTrack == null) {
+            VisualizerHint(Modifier.align(Alignment.Center))
         }
 
         MonoLabel(
@@ -228,7 +230,7 @@ private fun GraphicArea(
 }
 
 @Composable
-private fun VisualizerHint(onEnable: () -> Unit, accent: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+private fun VisualizerHint(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -236,12 +238,11 @@ private fun VisualizerHint(onEnable: () -> Unit, accent: androidx.compose.ui.gra
     ) {
         MonoIcon(MonoGlyph.NAV_SCN, tint = MonoColors.Fg3, size = 28.dp)
         Text(
-            "Live visuals need microphone access to read the audio output.",
+            "Play a track to see the live waveform and spectrum.",
             style = MonoTypography.bodySmall,
             color = MonoColors.Fg3,
             textAlign = TextAlign.Center,
         )
-        TextButton(onClick = onEnable) { Text("ENABLE", color = accent) }
     }
 }
 

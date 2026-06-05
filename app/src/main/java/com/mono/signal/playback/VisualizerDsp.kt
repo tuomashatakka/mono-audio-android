@@ -3,6 +3,7 @@ package com.mono.signal.playback
 import com.mono.signal.model.VisualizerFrame
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.max
@@ -19,6 +20,13 @@ object VisualizerDsp {
 
     const val DEFAULT_BANDS = 48
     const val DEFAULT_WAVE_POINTS = 96
+
+    /**
+     * FFT window size for the live PCM tap. A larger window buys frequency resolution at the
+     * cost of time resolution; 1024 samples (~23ms @ 44.1kHz) is a good balance for a music
+     * spectrum and stays cheap enough to run per frame at 60Hz.
+     */
+    const val DEFAULT_FFT_SIZE = 1024
 
 
     /** True when a captured or synthesized frame has visible waveform/FFT energy. */
@@ -177,5 +185,150 @@ object VisualizerDsp {
     private fun logLerp(lo: Double, hi: Double, t: Double): Double =
         lo * (hi / lo).pow(t)
 
+    // ---------------------------------------------------------------------------------------------
+    // Float-PCM analysis. Used by the live PCM tap, which reads the player's real (stereo) output
+    // rather than Android's 8-bit Visualizer downmix. Lets us pick the FFT size and keep channels.
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * Hann-windowed radix-2 magnitude spectrum of the most-recent power-of-two slice of [samples]
+     * (truncated/zero-padded to [fftSize]). Returns `fftSize / 2` magnitude bins. Pure, allocation
+     * only — no Android types — so it stays unit-testable on the plain JVM.
+     */
+    fun magnitudeSpectrum(samples: FloatArray, fftSize: Int = DEFAULT_FFT_SIZE): FloatArray {
+        val n = highestPowerOfTwo(fftSize)
+        if (n < 2) return FloatArray(0)
+        val re = FloatArray(n)
+        val im = FloatArray(n)
+        // Window the most recent n samples so the spectrum tracks "now".
+        val offset = (samples.size - n).coerceAtLeast(0)
+        val available = (samples.size - offset).coerceIn(0, n)
+        for (i in 0 until available) {
+            val w = 0.5f - 0.5f * cos((2.0 * PI * i / (n - 1)).toFloat())
+            re[i] = samples[offset + i] * w
+        }
+        fftInPlace(re, im)
+        val half = n / 2
+        val out = FloatArray(half)
+        for (k in 0 until half) out[k] = hypot(re[k], im[k])
+        return out
+    }
+
+    /**
+     * Full pipeline for the live tap: window + FFT [samples], fold the bins into [bands] log-spaced
+     * peak and RMS traces normalized to 0..1. Magnitudes are referenced against an approximate
+     * full-scale bin level so a loud tone lands near 1.0 regardless of [fftSize].
+     */
+    fun spectrumBands(
+        samples: FloatArray,
+        fftSize: Int = DEFAULT_FFT_SIZE,
+        bands: Int = DEFAULT_BANDS,
+    ): SpectrumBands {
+        val peakOut = FloatArray(bands)
+        val rmsOut = FloatArray(bands)
+        val magnitudes = magnitudeSpectrum(samples, fftSize)
+        val binCount = magnitudes.size
+        if (binCount < 2) return SpectrumBands(peakOut, rmsOut)
+
+        // A full-scale sinusoid concentrates ~N/4 of energy in one bin under a Hann window.
+        val reference = (highestPowerOfTwo(fftSize) * 0.25f).coerceAtLeast(1f)
+        val minBin = 1.0
+        val maxBin = binCount.toDouble()
+        for (b in 0 until bands) {
+            val lo = logLerp(minBin, maxBin, b.toDouble() / bands)
+            val hi = logLerp(minBin, maxBin, (b + 1.0) / bands)
+            val from = lo.toInt().coerceIn(1, binCount - 1)
+            val to = hi.toInt().coerceIn(from + 1, binCount)
+            var peak = 0f
+            var sumSquares = 0f
+            var count = 0
+            for (k in from until to) {
+                val magnitude = magnitudes[k]
+                if (magnitude > peak) peak = magnitude
+                sumSquares += magnitude * magnitude
+                count++
+            }
+            val rms = kotlin.math.sqrt(sumSquares / count.coerceAtLeast(1))
+            peakOut[b] = logUnit(peak / reference)
+            rmsOut[b] = logUnit(rms / reference)
+        }
+        return SpectrumBands(peakOut, rmsOut)
+    }
+
+    /**
+     * Resample [samples] down to [points] evenly spaced values clamped to -1..1. Used to turn a
+     * wide PCM window into a compact, drawable waveform without changing its shape (no peak-fold,
+     * so phase is preserved — important for the separate L/R traces).
+     */
+    fun downsampleWaveform(samples: FloatArray, points: Int = DEFAULT_WAVE_POINTS): FloatArray {
+        val out = FloatArray(points)
+        if (samples.isEmpty() || points <= 0) return out
+        val span = (points - 1).coerceAtLeast(1)
+        for (i in 0 until points) {
+            val idx = (i.toLong() * (samples.size - 1) / span).toInt().coerceIn(0, samples.lastIndex)
+            out[i] = samples[idx].coerceIn(-1f, 1f)
+        }
+        return out
+    }
+
+    /** Maps a 0..1-ish linear magnitude to a perceptual 0..1 with log lift for quiet detail. */
+    private fun logUnit(x: Float): Float = (ln(1f + x.coerceAtLeast(0f) * 40f) / LN_41).coerceIn(0f, 1f)
+
+    /** In-place iterative radix-2 Cooley–Tukey FFT. [re]/[im] share one power-of-two length. */
+    private fun fftInPlace(re: FloatArray, im: FloatArray) {
+        val n = re.size
+        if (n < 2) return
+        // Bit-reversal permutation.
+        var j = 0
+        for (i in 1 until n) {
+            var bit = n shr 1
+            while (j and bit != 0) {
+                j = j xor bit
+                bit = bit shr 1
+            }
+            j = j or bit
+            if (i < j) {
+                var t = re[i]; re[i] = re[j]; re[j] = t
+                t = im[i]; im[i] = im[j]; im[j] = t
+            }
+        }
+        var len = 2
+        while (len <= n) {
+            val ang = -2.0 * PI / len
+            val wRe = cos(ang).toFloat()
+            val wIm = sin(ang).toFloat()
+            var i = 0
+            while (i < n) {
+                var curRe = 1f
+                var curIm = 0f
+                val halfLen = len / 2
+                for (k in 0 until halfLen) {
+                    val uRe = re[i + k]
+                    val uIm = im[i + k]
+                    val vRe = re[i + k + halfLen] * curRe - im[i + k + halfLen] * curIm
+                    val vIm = re[i + k + halfLen] * curIm + im[i + k + halfLen] * curRe
+                    re[i + k] = uRe + vRe
+                    im[i + k] = uIm + vIm
+                    re[i + k + halfLen] = uRe - vRe
+                    im[i + k + halfLen] = uIm - vIm
+                    val nextRe = curRe * wRe - curIm * wIm
+                    curIm = curRe * wIm + curIm * wRe
+                    curRe = nextRe
+                }
+                i += len
+            }
+            len = len shl 1
+        }
+    }
+
+    /** Largest power of two <= [v] (and >= 1 for v >= 1). */
+    private fun highestPowerOfTwo(v: Int): Int {
+        if (v < 2) return if (v < 1) 0 else 1
+        var p = 1
+        while (p shl 1 <= v) p = p shl 1
+        return p
+    }
+
     private const val LOG_SCALE = 5.5f
+    private val LN_41 = ln(41f)
 }

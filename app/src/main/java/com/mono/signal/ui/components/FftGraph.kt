@@ -28,8 +28,8 @@ private const val PeakHistoryFrames = 90
 
 /**
  * Log-spaced spectrum as continuous peak/RMS traces. Incoming capture buffers are tweened at
- * frame rate so the graph refreshes above 30Hz even when Android Visualizer callbacks arrive
- * more slowly. A third trace keeps a slowly degrading sliding peak history.
+ * ~60Hz so the graph stays fluid even between (≥30Hz) capture frames. A third trace keeps a
+ * slowly degrading sliding peak history.
  */
 @Composable
 fun FftGraph(
@@ -48,7 +48,7 @@ fun FftGraph(
         peakHistory.add(0, peakBands.copyOf())
         while (peakHistory.size > PeakHistoryFrames) peakHistory.removeAt(peakHistory.lastIndex)
         peakAnim.snapTo(0f)
-        peakAnim.animateTo(1f, tween(33, easing = LinearEasing))
+        peakAnim.animateTo(1f, tween(16, easing = LinearEasing))
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
