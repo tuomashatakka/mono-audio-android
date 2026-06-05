@@ -2,6 +2,8 @@ package com.mono.signal.ui.nav
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.tween
@@ -83,6 +85,13 @@ fun AppNav() {
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
+    BackHandler {
+        if (currentRoute != Routes.LIBRARY) {
+            navController.navigate(Routes.LIBRARY) { popUpTo(Routes.LIBRARY) { inclusive = false } }
+        } else {
+            (context as? Activity)?.finish()
+        }
+    }
 
     fun switchTab(route: String) {
         if (route == currentRoute) return
@@ -117,7 +126,7 @@ fun AppNav() {
                     onGroupBy = libraryViewModel::setGroupBy,
                     onSearch = libraryViewModel::setSearch,
                     onOpenSettings = { switchTab(Routes.SETTINGS) },
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 172.dp),
+                    contentPadding = PaddingValues(top = 80.dp, bottom = 120.dp),
                 )
             }
             composable(
@@ -128,12 +137,14 @@ fun AppNav() {
                 NowPlayingScreen(
                     state = nowPlayingState,
                     audioGranted = audioGranted,
-                    onBack = { navController.popBackStack() },
+                    onBack = { switchTab(Routes.LIBRARY) },
                     onCycleGraphic = nowPlayingViewModel::cycleGraphic,
                     onPlayPause = nowPlayingViewModel::togglePlayPause,
                     onNext = nowPlayingViewModel::next,
                     onPrevious = nowPlayingViewModel::previous,
                     onSeek = nowPlayingViewModel::seek,
+                    onScrub = nowPlayingViewModel::scrub,
+                    onScrubEnd = nowPlayingViewModel::endScrub,
                     onShuffle = nowPlayingViewModel::toggleShuffle,
                     onRepeat = nowPlayingViewModel::cycleRepeat,
                     onEnableVisualizer = { launcher.launch(REQUIRED_PERMISSIONS) },
@@ -142,38 +153,40 @@ fun AppNav() {
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     theme = themeConfig,
-                    onBack = { navController.popBackStack() },
+                    onBack = { switchTab(Routes.LIBRARY) },
                     onAccent = settingsViewModel::setAccent,
                     onBackground = settingsViewModel::setBackground,
                 )
             }
         }
 
-        // Mini-player + bottom nav overlay (hidden on the immersive Now Playing screen).
-        if (currentRoute != Routes.NOW_PLAYING) {
-            Column(Modifier.align(Alignment.BottomCenter)) {
-                if (currentRoute == Routes.LIBRARY && libraryState.activeTrackId != null) {
-                    MiniPlayer(
-                        state = nowPlayingState.playback,
-                        onClick = { navController.navigate(Routes.NOW_PLAYING) },
-                        onPlayPause = nowPlayingViewModel::togglePlayPause,
-                    )
-                }
-                MonoBottomNav(
-                    selected = when (currentRoute) {
-                        Routes.SETTINGS -> NavTab.CFG
-                        else -> NavTab.LIB
-                    },
-                    onSelect = { tab ->
-                        when (tab) {
-                            NavTab.LIB -> switchTab(Routes.LIBRARY)
-                            NavTab.NOW -> navController.navigate(Routes.NOW_PLAYING)
-                            NavTab.CFG -> switchTab(Routes.SETTINGS)
-                            else -> Unit
-                        }
-                    },
-                )
-            }
+        Column(Modifier.align(Alignment.TopCenter)) {
+            MonoBottomNav(
+                selected = when (currentRoute) {
+                    Routes.SETTINGS -> NavTab.CFG
+                    Routes.NOW_PLAYING -> NavTab.NOW
+                    else -> NavTab.LIB
+                },
+                onSelect = { tab ->
+                    when (tab) {
+                        NavTab.LIB -> switchTab(Routes.LIBRARY)
+                        NavTab.NOW -> navController.navigate(Routes.NOW_PLAYING)
+                        NavTab.CFG -> switchTab(Routes.SETTINGS)
+                        else -> Unit
+                    }
+                },
+            )
+        }
+        if (nowPlayingState.playback.currentTrack != null && currentRoute != Routes.NOW_PLAYING) {
+            MiniPlayer(
+                state = nowPlayingState.playback,
+                onClick = { navController.navigate(Routes.NOW_PLAYING) },
+                onPlayPause = nowPlayingViewModel::togglePlayPause,
+                onPrevious = nowPlayingViewModel::previous,
+                onNext = nowPlayingViewModel::next,
+                compact = currentRoute != Routes.NOW_PLAYING,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }

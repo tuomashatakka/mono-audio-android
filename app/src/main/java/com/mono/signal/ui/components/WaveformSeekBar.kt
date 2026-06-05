@@ -25,9 +25,8 @@ import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
 
 /**
- * Amplitude waveform with a neon gradient fill up to [progress]. Bars are sized to a fixed
- * dp pitch (no overflow), square-capped, and animate up from a flat centre line whenever a
- * new envelope arrives. Tapping or dragging reports a 0..1 [onSeek] fraction.
+ * Flat, square-corner amplitude waveform. Tapping seeks; dragging emits continuous scrub
+ * updates plus signed drag rate so the player can stretch playback instead of clicking.
  */
 @Composable
 fun WaveformSeekBar(
@@ -35,16 +34,18 @@ fun WaveformSeekBar(
     progress: Float,
     onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    onScrub: (fraction: Float, rate: Float) -> Unit = { _, _ -> },
+    onScrubEnd: () -> Unit = {},
 ) {
     val palette = LocalMonoPalette.current
     var dragFraction by remember { mutableFloatStateOf(-1f) }
+    var lastDragFraction by remember { mutableFloatStateOf(-1f) }
     val shown = if (dragFraction >= 0f) dragFraction else progress
 
-    // Grow-from-line animation, restarted each time the envelope reference changes.
     val grow = remember(envelope) { Animatable(0f) }
     val loaded = remember(envelope) { envelope.any { it > 0f } }
     LaunchedEffect(envelope) {
-        if (loaded) grow.animateTo(1f, tween(620, easing = FastOutSlowInEasing))
+        if (loaded) grow.animateTo(1f, tween(360, easing = FastOutSlowInEasing))
     }
 
     val fill = remember(palette) { Brush.horizontalGradient(palette.sweep) }
@@ -52,18 +53,35 @@ fun WaveformSeekBar(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(68.dp)
+            .height(54.dp)
             .pointerInput(Unit) {
                 detectTapGestures { offset -> onSeek((offset.x / size.width).coerceIn(0f, 1f)) }
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
-                    onDragStart = { dragFraction = (it.x / size.width).coerceIn(0f, 1f) },
-                    onHorizontalDrag = { change, _ ->
-                        dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
+                    onDragStart = {
+                        dragFraction = (it.x / size.width).coerceIn(0f, 1f)
+                        lastDragFraction = dragFraction
+                        onScrub(dragFraction, 0f)
                     },
-                    onDragEnd = { if (dragFraction >= 0f) onSeek(dragFraction); dragFraction = -1f },
-                    onDragCancel = { dragFraction = -1f },
+                    onHorizontalDrag = { change, _ ->
+                        val next = (change.position.x / size.width).coerceIn(0f, 1f)
+                        val rate = ((next - lastDragFraction) * 180f).coerceIn(-3f, 3f)
+                        dragFraction = next
+                        lastDragFraction = next
+                        onScrub(next, rate)
+                    },
+                    onDragEnd = {
+                        if (dragFraction >= 0f) onSeek(dragFraction)
+                        dragFraction = -1f
+                        lastDragFraction = -1f
+                        onScrubEnd()
+                    },
+                    onDragCancel = {
+                        dragFraction = -1f
+                        lastDragFraction = -1f
+                        onScrubEnd()
+                    },
                 )
             },
     ) {
@@ -74,7 +92,7 @@ fun WaveformSeekBar(
         val bars = WaveformReducer.resample(envelope, barCount)
 
         val midY = size.height / 2f
-        val maxBarHeight = size.height - 4.dp.toPx()
+        val maxBarHeight = size.height - 2.dp.toPx()
         val minBarHeight = 2.dp.toPx()
         val playedX = shown * size.width
         val g = grow.value
@@ -88,10 +106,10 @@ fun WaveformSeekBar(
                 start = Offset(x, midY - barHeight / 2f),
                 end = Offset(x, midY + barHeight / 2f),
                 strokeWidth = barWidth,
-                cap = StrokeCap.Butt, // square, not rounded
+                cap = StrokeCap.Butt,
             )
         }
     }
 }
 
-private val dimBrush = Brush.verticalGradient(listOf(MonoColors.Fog, MonoColors.Slate))
+private val dimBrush = Brush.horizontalGradient(listOf(MonoColors.Graphite, MonoColors.Graphite))

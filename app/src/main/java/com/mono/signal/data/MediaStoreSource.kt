@@ -24,6 +24,9 @@ class MediaStoreSource @Inject constructor(
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.ALBUM_ID,
+            MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.RELATIVE_PATH,
+            MediaStore.Audio.Media.DATE_ADDED,
         )
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
@@ -36,6 +39,9 @@ class MediaStoreSource @Inject constructor(
             val albumCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durationCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val albumIdCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+            val dataCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val relativePathCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.RELATIVE_PATH)
+            val dateAddedCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
 
             while (c.moveToNext()) {
                 val id = c.getLong(idCol)
@@ -47,6 +53,9 @@ class MediaStoreSource @Inject constructor(
                     album = c.getString(albumCol) ?: "",
                     durationMs = c.getLong(durationCol),
                     albumId = c.getLong(albumIdCol),
+                    filePath = c.getString(dataCol) ?: "",
+                    folder = (c.getString(relativePathCol) ?: "").trimEnd('/'),
+                    dateAddedSeconds = c.getLong(dateAddedCol),
                 )
             }
         }
