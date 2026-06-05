@@ -1,11 +1,15 @@
 package com.mono.signal.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -17,16 +21,13 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.mono.signal.data.waveform.WaveformReducer
+import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
 
 /**
- * Mirror-style amplitude waveform with a neon gradient fill up to [progress]. Tapping or
- * dragging reports a 0..1 [onSeek] fraction. Stateless — envelope + progress come in,
- * seek intents go out.
- *
- * Bars are sized to the available width (a fixed dp pitch), and the stored envelope is
- * resampled to exactly that many bars, so the track never overflows the canvas regardless
- * of how many samples the decoder produced.
+ * Amplitude waveform with a neon gradient fill up to [progress]. Bars are sized to a fixed
+ * dp pitch (no overflow), square-capped, and animate up from a flat centre line whenever a
+ * new envelope arrives. Tapping or dragging reports a 0..1 [onSeek] fraction.
  */
 @Composable
 fun WaveformSeekBar(
@@ -35,17 +36,25 @@ fun WaveformSeekBar(
     onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val palette = LocalMonoPalette.current
     var dragFraction by remember { mutableFloatStateOf(-1f) }
     val shown = if (dragFraction >= 0f) dragFraction else progress
+
+    // Grow-from-line animation, restarted each time the envelope reference changes.
+    val grow = remember(envelope) { Animatable(0f) }
+    val loaded = remember(envelope) { envelope.any { it > 0f } }
+    LaunchedEffect(envelope) {
+        if (loaded) grow.animateTo(1f, tween(620, easing = FastOutSlowInEasing))
+    }
+
+    val fill = remember(palette) { Brush.horizontalGradient(palette.sweep) }
 
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(68.dp)
             .pointerInput(Unit) {
-                detectTapGestures { offset ->
-                    onSeek((offset.x / size.width).coerceIn(0f, 1f))
-                }
+                detectTapGestures { offset -> onSeek((offset.x / size.width).coerceIn(0f, 1f)) }
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -53,10 +62,7 @@ fun WaveformSeekBar(
                     onHorizontalDrag = { change, _ ->
                         dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
                     },
-                    onDragEnd = {
-                        if (dragFraction >= 0f) onSeek(dragFraction)
-                        dragFraction = -1f
-                    },
+                    onDragEnd = { if (dragFraction >= 0f) onSeek(dragFraction); dragFraction = -1f },
                     onDragCancel = { dragFraction = -1f },
                 )
             },
@@ -65,32 +71,27 @@ fun WaveformSeekBar(
         val gap = 2.dp.toPx()
         val pitch = barWidth + gap
         val barCount = (size.width / pitch).toInt().coerceIn(1, 512)
-
         val bars = WaveformReducer.resample(envelope, barCount)
+
         val midY = size.height / 2f
         val maxBarHeight = size.height - 4.dp.toPx()
-        val minBarHeight = 3.dp.toPx()
+        val minBarHeight = 2.dp.toPx()
         val playedX = shown * size.width
+        val g = grow.value
 
         for (i in 0 until barCount) {
             val amp = if (bars.isNotEmpty()) bars[i.coerceIn(0, bars.size - 1)] else 0f
-            val barHeight = (amp * maxBarHeight).coerceAtLeast(minBarHeight)
+            val barHeight = (amp * maxBarHeight * g).coerceAtLeast(minBarHeight)
             val x = i * pitch + barWidth / 2f
             drawLine(
-                brush = if (x <= playedX) fillBrush else dimBrush,
+                brush = if (x <= playedX) fill else dimBrush,
                 start = Offset(x, midY - barHeight / 2f),
                 end = Offset(x, midY + barHeight / 2f),
                 strokeWidth = barWidth,
-                cap = StrokeCap.Round,
+                cap = StrokeCap.Butt, // square, not rounded
             )
         }
     }
 }
 
-private val fillBrush = Brush.horizontalGradient(
-    listOf(MonoColors.Turquoise, MonoColors.Violet, MonoColors.Crimson),
-)
-
-private val dimBrush = Brush.verticalGradient(
-    listOf(MonoColors.Fog, MonoColors.Slate),
-)
+private val dimBrush = Brush.verticalGradient(listOf(MonoColors.Fog, MonoColors.Slate))

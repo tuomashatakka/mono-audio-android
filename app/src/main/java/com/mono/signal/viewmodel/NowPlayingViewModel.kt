@@ -82,6 +82,9 @@ class NowPlayingViewModel @Inject constructor(
 
     fun cycleGraphic() { graphic.value = graphic.value.next() }
 
+    /** Called after the user grants microphone access so the live graphs start capturing. */
+    fun retryVisualizer() = playerController.retryVisualizer()
+
     fun togglePlayPause() = playerController.togglePlayPause()
     fun next() = playerController.next()
     fun previous() = playerController.previous()
