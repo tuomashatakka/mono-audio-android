@@ -9,6 +9,7 @@ import com.mono.signal.model.PlaybackState
 import com.mono.signal.model.VisualizerFrame
 import com.mono.signal.playback.AudioVisualizer
 import com.mono.signal.playback.PlayerController
+import com.mono.signal.playback.VisualizerDsp
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -62,7 +63,12 @@ class NowPlayingViewModel @Inject constructor(
         graphic,
         visualizer.active,
     ) { playback, frame, env, gfx, active ->
-        NowPlayingUiState(playback, frame, env, gfx, active)
+        val displayFrame = if (VisualizerDsp.hasSignal(frame)) {
+            frame
+        } else {
+            VisualizerDsp.frameFromEnvelope(env, playback.progress)
+        }
+        NowPlayingUiState(playback, displayFrame, env, gfx, active)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NowPlayingUiState())
 
     init {
