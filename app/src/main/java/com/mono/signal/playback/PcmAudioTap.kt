@@ -2,6 +2,7 @@ package com.mono.signal.playback
 
 import androidx.media3.common.C
 import androidx.media3.exoplayer.audio.TeeAudioProcessor
+import com.mono.signal.data.ThemePreferences
 import com.mono.signal.model.VisualizerFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,15 +25,22 @@ import javax.inject.Singleton
  * Visualizer can't:
  *
  *  - true stereo, so the left/right waveforms — and their phase difference — can be drawn apart,
- *  - a choosable FFT size (1024) for real frequency resolution instead of an 8-bit byte spectrum,
+ *  - a choosable FFT size (the "FFT blocks" setting, 512–8192) for real frequency resolution
+ *    instead of an 8-bit byte spectrum,
  *  - an update rate bounded only by the audio buffer cadence, well above the Visualizer's ~20Hz.
  *
  * The audio callback ([handleBuffer]) only copies samples into a ring buffer — cheap and
  * allocation-free — while a separate coroutine renders frames at ~60Hz off the audio thread, so
  * the FFT never risks an audio glitch. It also means no `RECORD_AUDIO` permission is required.
+ *
+ * The analysis window is taken from [ThemePreferences] on every rendered frame, so changing the
+ * "FFT blocks" setting takes effect immediately. The ring buffer is sized for the largest window
+ * ([MAX_WINDOW]) so the audio thread never has to reallocate when the size changes.
  */
 @Singleton
-class PcmAudioTap @Inject constructor() : TeeAudioProcessor.AudioBufferSink {
+class PcmAudioTap @Inject constructor(
+    private val themePreferences: ThemePreferences,
+) : TeeAudioProcessor.AudioBufferSink {
 
     private val _frames = MutableStateFlow(VisualizerFrame.empty())
     val frames: StateFlow<VisualizerFrame> = _frames.asStateFlow()
@@ -40,9 +48,10 @@ class PcmAudioTap @Inject constructor() : TeeAudioProcessor.AudioBufferSink {
     private val _active = MutableStateFlow(false)
     val active: StateFlow<Boolean> = _active.asStateFlow()
 
-    // Stereo ring buffers. Capacity is a couple of FFT windows so the render loop always has a
-    // full, recent slice to analyse regardless of how the decoder chunks its output.
-    private val capacity = WINDOW * 2
+    // Stereo ring buffers. Sized for two of the largest analysis windows so the render loop always
+    // has a full, recent slice to analyse regardless of the chosen FFT size or how the decoder
+    // chunks its output. A fixed capacity means the audio thread never reallocates.
+    private val capacity = MAX_WINDOW * 2
     private val left = FloatArray(capacity)
     private val right = FloatArray(capacity)
     private var writeIndex = 0
@@ -128,12 +137,12 @@ class PcmAudioTap @Inject constructor() : TeeAudioProcessor.AudioBufferSink {
         if (filled < capacity) filled++
     }
 
-    /** Snapshot the most recent [WINDOW] samples of both channels in chronological order. */
+    /** Snapshot the most recent [window] samples of both channels in chronological order. */
     @Synchronized
-    private fun snapshot(outLeft: FloatArray, outRight: FloatArray) {
-        val n = minOf(WINDOW, filled)
+    private fun snapshot(outLeft: FloatArray, outRight: FloatArray, window: Int) {
+        val n = minOf(window, filled)
         // Pad the front with silence when we don't yet have a full window.
-        val pad = WINDOW - n
+        val pad = window - n
         for (i in 0 until pad) {
             outLeft[i] = 0f
             outRight[i] = 0f
@@ -146,15 +155,23 @@ class PcmAudioTap @Inject constructor() : TeeAudioProcessor.AudioBufferSink {
         }
     }
 
-    private val snapLeft = FloatArray(WINDOW)
-    private val snapRight = FloatArray(WINDOW)
-    private val mono = FloatArray(WINDOW)
+    // Reused render-loop scratch buffers, resized when the chosen FFT window changes. Only the
+    // single render coroutine touches these, so reassigning them needs no synchronization.
+    private var snapLeft = FloatArray(VisualizerDsp.DEFAULT_FFT_SIZE)
+    private var snapRight = FloatArray(VisualizerDsp.DEFAULT_FFT_SIZE)
+    private var mono = FloatArray(VisualizerDsp.DEFAULT_FFT_SIZE)
 
     private fun renderFrame(): VisualizerFrame {
-        snapshot(snapLeft, snapRight)
-        for (i in 0 until WINDOW) mono[i] = (snapLeft[i] + snapRight[i]) * 0.5f
+        val window = currentWindow()
+        if (snapLeft.size != window) {
+            snapLeft = FloatArray(window)
+            snapRight = FloatArray(window)
+            mono = FloatArray(window)
+        }
+        snapshot(snapLeft, snapRight, window)
+        for (i in 0 until window) mono[i] = (snapLeft[i] + snapRight[i]) * 0.5f
 
-        val spectrum = VisualizerDsp.spectrumBands(mono, WINDOW, VisualizerDsp.DEFAULT_BANDS)
+        val spectrum = VisualizerDsp.spectrumBands(mono, window, VisualizerDsp.DEFAULT_BANDS)
         smoothedPeak = VisualizerDsp.smooth(smoothedPeak, spectrum.peak)
         smoothedRms = VisualizerDsp.smooth(smoothedRms, spectrum.rms, attack = 0.42f, decay = 0.18f)
 
@@ -172,8 +189,13 @@ class PcmAudioTap @Inject constructor() : TeeAudioProcessor.AudioBufferSink {
         )
     }
 
+    /** The user-selected FFT/analysis window, clamped to the ring's supported range. */
+    private fun currentWindow(): Int =
+        themePreferences.config.value.fftBlockSize.coerceIn(MIN_WINDOW, MAX_WINDOW)
+
     private companion object {
-        const val WINDOW = VisualizerDsp.DEFAULT_FFT_SIZE // analysis + waveform window (samples)
+        const val MIN_WINDOW = 512 // smallest selectable "FFT blocks" size
+        const val MAX_WINDOW = 8192 // largest selectable size; bounds the ring buffer capacity
         const val WAVE_POINTS = VisualizerDsp.DEFAULT_WAVE_POINTS
         const val FRAME_MILLIS = 16L // ~60Hz render while audio is flowing
         const val IDLE_FRAME_MILLIS = 200L // back off when nothing is playing

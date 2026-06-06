@@ -99,6 +99,33 @@ class PlayerController @Inject constructor(
     fun next() { controller?.seekToNextMediaItem() }
     fun previous() { controller?.seekToPreviousMediaItem() }
 
+    fun addToQueue(track: Track) {
+        val c = controller ?: return
+        submitted[track.mediaId] = track
+        c.addMediaItem(track.toMediaItem())
+        syncState()
+    }
+
+    fun playNext(track: Track) {
+        val c = controller ?: return
+        submitted[track.mediaId] = track
+        val nextIndex = (c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount)
+        c.addMediaItem(nextIndex, track.toMediaItem())
+        syncState()
+    }
+
+    fun removeFromQueue(index: Int) {
+        val c = controller ?: return
+        if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
+        syncState()
+    }
+
+    fun moveQueueItem(from: Int, to: Int) {
+        val c = controller ?: return
+        if (from in 0 until c.mediaItemCount && to in 0 until c.mediaItemCount) c.moveMediaItem(from, to)
+        syncState()
+    }
+
     fun seekToFraction(fraction: Float) {
         val c = controller ?: return
         val duration = c.duration
@@ -151,6 +178,8 @@ class PlayerController @Inject constructor(
                 Player.REPEAT_MODE_ALL -> RepeatMode.ALL
                 else -> RepeatMode.OFF
             },
+            queue = (0 until c.mediaItemCount).mapNotNull { idx -> c.getMediaItemAt(idx).mediaId.let(::resolveTrack) },
+            queueIndex = c.currentMediaItemIndex,
         )
         managePositionTicker(c.isPlaying)
     }

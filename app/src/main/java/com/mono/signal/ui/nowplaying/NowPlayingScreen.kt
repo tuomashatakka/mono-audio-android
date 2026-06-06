@@ -17,20 +17,29 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.AlertDialog
+import android.media.MediaMetadataRetriever
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,6 +48,7 @@ import com.mono.signal.ui.components.AlbumArt
 import com.mono.signal.ui.components.FftGraph
 import com.mono.signal.ui.components.MonoIconButton
 import com.mono.signal.ui.components.MonoLabel
+import com.mono.signal.ui.components.StereoWidthGraph
 import com.mono.signal.ui.components.TransportControls
 import com.mono.signal.ui.components.Waveform3DGraph
 import com.mono.signal.ui.components.WaveformSeekBar
@@ -103,6 +113,8 @@ fun NowPlayingScreen(
             state = state,
             audioGranted = audioGranted,
             onTap = onCycleGraphic,
+            onPrevious = onPrevious,
+            onNext = onNext,
             onEnableVisualizer = onEnableVisualizer,
             modifier = Modifier.fillMaxWidth(0.82f).aspectRatio(1f).align(Alignment.CenterHorizontally),
         )
@@ -183,6 +195,8 @@ private fun GraphicArea(
     state: NowPlayingUiState,
     audioGranted: Boolean,
     onTap: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
     onEnableVisualizer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -200,7 +214,20 @@ private fun GraphicArea(
             when (graphic) {
                 NowPlayingGraphic.ALBUM_ART -> AlbumArt(
                     track = state.playback.currentTrack,
-                    modifier = Modifier.fillMaxSize().padding(8.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(state.playback.currentTrack?.id) {
+                            var totalDrag = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { totalDrag = 0f },
+                                onDragEnd = {
+                                    when {
+                                        totalDrag < -80f -> onNext()
+                                        totalDrag > 80f -> onPrevious()
+                                    }
+                                },
+                            ) { _, dragAmount -> totalDrag += dragAmount }
+                        },
                 )
                 NowPlayingGraphic.WAVE_3D -> Waveform3DGraph(
                     waveformLeft = state.frame.waveformLeft,
@@ -210,6 +237,10 @@ private fun GraphicArea(
                 NowPlayingGraphic.FFT -> FftGraph(
                     peakBands = state.frame.fftPeakBands,
                     rmsBands = state.frame.fftRmsBands,
+                    modifier = Modifier.fillMaxSize().padding(18.dp),
+                )
+                NowPlayingGraphic.STEREO_WIDTH -> StereoWidthGraph(
+                    waveform = state.frame.waveform,
                     modifier = Modifier.fillMaxSize().padding(18.dp),
                 )
             }
@@ -257,18 +288,70 @@ private fun FileTagsDialog(
     var editTitle by remember(title) { mutableStateOf(title) }
     var editArtist by remember(artist) { mutableStateOf(artist) }
     var editAlbum by remember(album) { mutableStateOf(album) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("SAVE") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL") } },
-        title = { Text("File meta tags", color = MonoColors.Fg1) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = editTitle, onValueChange = { editTitle = it }, label = { Text("Title") })
-                OutlinedTextField(value = editArtist, onValueChange = { editArtist = it }, label = { Text("Artist") })
-                OutlinedTextField(value = editAlbum, onValueChange = { editAlbum = it }, label = { Text("Album") })
-                Text(path.ifBlank { "No file path available" }, style = MonoTypography.bodySmall, color = MonoColors.Fg3)
+    val allTags by produceState(initialValue = emptyList<Pair<String, String>>(), path) {
+        value = readAllTags(path).ifEmpty {
+            listOf("title" to title, "artist" to artist, "album" to album, "path" to path).filter { it.second.isNotBlank() }
+        }
+    }
+    Box(
+        Modifier.fillMaxSize().background(MonoColors.Void.copy(alpha = 0.78f)).clickable(
+            interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss,
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 520.dp)
+                .fillMaxWidth(0.88f)
+                .clip(RoundedCornerShape(3.dp))
+                .background(LocalMonoPalette.current.panelElevated)
+                .border(1.dp, LocalMonoPalette.current.accent.copy(alpha = 0.7f), RoundedCornerShape(3.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            MonoLabel("— __ALL__ META TAGS", color = LocalMonoPalette.current.accent)
+            OutlinedTextField(value = editTitle, onValueChange = { editTitle = it }, label = { Text("Title") })
+            OutlinedTextField(value = editArtist, onValueChange = { editArtist = it }, label = { Text("Artist") })
+            OutlinedTextField(value = editAlbum, onValueChange = { editAlbum = it }, label = { Text("Album") })
+            Column(Modifier.height(190.dp).verticalScroll(rememberScrollState())) {
+                allTags.forEach { (key, value) ->
+                    Text("$key = $value", style = MonoTypography.bodySmall, color = MonoColors.Fg2)
+                }
             }
-        },
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) { Text("CANCEL") }
+                TextButton(onClick = onDismiss) { Text("SAVE") }
+            }
+        }
+    }
+}
+
+private fun readAllTags(path: String): List<Pair<String, String>> {
+    if (path.isBlank()) return emptyList()
+    val keys = listOf(
+        MediaMetadataRetriever.METADATA_KEY_TITLE to "title",
+        MediaMetadataRetriever.METADATA_KEY_ARTIST to "artist",
+        MediaMetadataRetriever.METADATA_KEY_ALBUM to "album",
+        MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST to "album_artist",
+        MediaMetadataRetriever.METADATA_KEY_AUTHOR to "author",
+        MediaMetadataRetriever.METADATA_KEY_COMPOSER to "composer",
+        MediaMetadataRetriever.METADATA_KEY_GENRE to "genre",
+        MediaMetadataRetriever.METADATA_KEY_YEAR to "year",
+        MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER to "track_number",
+        MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER to "disc_number",
+        MediaMetadataRetriever.METADATA_KEY_DURATION to "duration_ms",
+        MediaMetadataRetriever.METADATA_KEY_MIMETYPE to "mime_type",
+        MediaMetadataRetriever.METADATA_KEY_BITRATE to "bitrate",
+        MediaMetadataRetriever.METADATA_KEY_NUM_TRACKS to "num_tracks",
+        MediaMetadataRetriever.METADATA_KEY_WRITER to "writer",
+        MediaMetadataRetriever.METADATA_KEY_COMPILATION to "compilation",
+        MediaMetadataRetriever.METADATA_KEY_DATE to "date",
     )
+    return runCatching {
+        MediaMetadataRetriever().use { retriever ->
+            retriever.setDataSource(path)
+            keys.mapNotNull { (key, label) -> retriever.extractMetadata(key)?.takeIf { it.isNotBlank() }?.let { label to it } }
+        }
+    }.getOrDefault(emptyList())
 }

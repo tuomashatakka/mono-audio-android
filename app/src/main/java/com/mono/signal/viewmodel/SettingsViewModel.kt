@@ -18,4 +18,5 @@ class SettingsViewModel @Inject constructor(
 
     fun setAccent(accent: AccentOption) = themePreferences.setAccent(accent)
     fun setBackground(background: BackgroundOption) = themePreferences.setBackground(background)
+    fun setFftBlockSize(blockSize: Int) = themePreferences.setFftBlockSize(blockSize)
 }

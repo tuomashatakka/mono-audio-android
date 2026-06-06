@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,13 +27,13 @@ import com.mono.signal.ui.theme.MonoLabelStyle
 
 enum class NavTab(val label: String, val glyph: MonoGlyph, val enabled: Boolean) {
     LIB("LIB", MonoGlyph.NAV_LIB, true),
-    SCN("SCN", MonoGlyph.NAV_SCN, false),
+    DSP("DSP", MonoGlyph.NAV_SCN, true),
     NOW("NOW", MonoGlyph.NAV_NOW, true),
-    QUE("QUE", MonoGlyph.NAV_QUE, false),
+    QUE("QUE", MonoGlyph.NAV_QUE, true),
     CFG("CFG", MonoGlyph.NAV_CFG, true),
 }
 
-/** The five-slot bottom nav from the reference. Disabled slots (SCN/QUE) are dimmed. */
+/** The five-slot bottom nav from the reference. */
 @Composable
 fun MonoBottomNav(
     selected: NavTab,
@@ -46,7 +46,7 @@ fun MonoBottomNav(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
