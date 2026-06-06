@@ -69,6 +69,27 @@ fun FftGraph(
         drawTrace(peak, palette.accent, strokeWidth = 3f)
         drawTrace(rms, palette.sweep.getOrElse(1) { palette.accent }.copy(alpha = 0.9f), strokeWidth = 2f)
 
+        listOf(-60, -30, 0).forEach { db ->
+            val normalized = ((db + 60) / 60f).coerceIn(0f, 1f)
+            val y = size.height - (normalized * size.height * 0.9f) - size.height * 0.04f
+            drawLine(
+                color = MonoColors.Fg4.copy(alpha = 0.14f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1f,
+            )
+            drawContext.canvas.nativeCanvas.drawText(
+                "$db dB",
+                4f,
+                y - 4f,
+                android.graphics.Paint().apply {
+                    color = android.graphics.Color.argb(130, 234, 242, 245)
+                    textSize = 10.dp.toPx()
+                    isAntiAlias = true
+                },
+            )
+        }
+
         FrequencyLabels.forEach { hz ->
             val x = frequencyToX(hz.toFloat(), size.width)
             drawLine(

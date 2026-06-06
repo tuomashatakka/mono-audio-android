@@ -2,6 +2,7 @@ package com.mono.signal.playback
 
 import android.media.audiofx.Visualizer
 import android.util.Log
+import com.mono.signal.data.ThemePreferences
 import com.mono.signal.model.VisualizerFrame
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +18,9 @@ import javax.inject.Singleton
  * (no permission, unsupported device), the frame flow simply stays empty.
  */
 @Singleton
-class AudioVisualizer @Inject constructor() {
+class AudioVisualizer @Inject constructor(
+    private val themePreferences: ThemePreferences,
+) {
 
     private val _frames = MutableStateFlow(VisualizerFrame.empty())
     val frames: StateFlow<VisualizerFrame> = _frames.asStateFlow()
@@ -38,7 +41,7 @@ class AudioVisualizer @Inject constructor() {
         release()
         runCatching {
             visualizer = Visualizer(sessionId).apply {
-                captureSize = Visualizer.getCaptureSizeRange()[1]
+                captureSize = validCaptureSize(themePreferences.config.value.fftBlockSize)
                 val rate = Visualizer.getMaxCaptureRate()
                 setDataCaptureListener(listener, rate, true, true)
                 enabled = true
@@ -89,6 +92,16 @@ class AudioVisualizer @Inject constructor() {
             fftPeakBands = smoothedPeakBands.copyOf(),
             fftRmsBands = smoothedRmsBands.copyOf(),
         )
+    }
+
+    private fun validCaptureSize(requested: Int): Int {
+        val range = Visualizer.getCaptureSizeRange()
+        val min = range[0]
+        val max = range[1]
+        return listOf(512, 1024, 2048, 4096, 8192)
+            .filter { it in min..max }
+            .minByOrNull { kotlin.math.abs(it - requested) }
+            ?: max
     }
 
     private companion object {

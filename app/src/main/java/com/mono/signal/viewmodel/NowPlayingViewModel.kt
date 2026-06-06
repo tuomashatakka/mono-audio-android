@@ -99,4 +99,5 @@ class NowPlayingViewModel @Inject constructor(
     fun endScrub() = playerController.endScrub()
     fun toggleShuffle() = playerController.toggleShuffle()
     fun cycleRepeat() = playerController.cycleRepeat()
+    fun removeFromQueue(index: Int) = playerController.removeFromQueue(index)
 }

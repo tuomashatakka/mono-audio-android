@@ -29,12 +29,15 @@ class ThemePreferences @Inject constructor(
 
     fun setBackground(background: BackgroundOption) = update { it.copy(background = background) }
 
+    fun setFftBlockSize(blockSize: Int) = update { it.copy(fftBlockSize = blockSize.coerceIn(512, 8192)) }
+
     private inline fun update(transform: (ThemeConfig) -> ThemeConfig) {
         val next = transform(_config.value)
         _config.value = next
         prefs.edit()
             .putString(KEY_ACCENT, next.accent.name)
             .putString(KEY_BACKGROUND, next.background.name)
+            .putInt(KEY_FFT_BLOCK_SIZE, next.fftBlockSize)
             .apply()
     }
 
@@ -45,11 +48,14 @@ class ThemePreferences @Inject constructor(
         val background = prefs.getString(KEY_BACKGROUND, null)
             ?.let { runCatching { BackgroundOption.valueOf(it) }.getOrNull() }
             ?: BackgroundOption.VOID
-        return ThemeConfig(accent, background)
+        val fftBlockSize = prefs.getInt(KEY_FFT_BLOCK_SIZE, 2048).takeIf { it in FftBlockSizes } ?: 2048
+        return ThemeConfig(accent, background, fftBlockSize)
     }
 
     private companion object {
         const val KEY_ACCENT = "accent"
         const val KEY_BACKGROUND = "background"
+        const val KEY_FFT_BLOCK_SIZE = "fft_block_size"
+        val FftBlockSizes = setOf(512, 1024, 2048, 4096, 8192)
     }
 }

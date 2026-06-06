@@ -101,4 +101,8 @@ class LibraryViewModel @Inject constructor(
         val index = ordered.indexOfFirst { it.id == track.id }
         if (index >= 0) playerController.play(ordered, index)
     }
+
+    fun addToQueue(track: Track) = playerController.addToQueue(track)
+
+    fun playNext(track: Track) = playerController.playNext(track)
 }

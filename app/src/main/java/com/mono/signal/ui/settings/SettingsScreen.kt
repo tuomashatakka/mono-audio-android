@@ -44,6 +44,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAccent: (AccentOption) -> Unit,
     onBackground: (BackgroundOption) -> Unit,
+    onFftBlockSize: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
@@ -105,6 +106,11 @@ fun SettingsScreen(
         // ---- Reference config sections (display only for the MVP) ----
         Section("AUDIO") {
             ConfigRow("Sample rate", "48 kHz", palette.accent)
+            Spacer(Modifier.height(12.dp))
+            Text("FFT BLOCKS", style = MonoTypography.bodySmall.copy(letterSpacing = 2.sp), color = MonoColors.Fg3)
+            Spacer(Modifier.height(12.dp))
+            FftBlockToggle(theme.fftBlockSize, onFftBlockSize, palette.accent)
+            Spacer(Modifier.height(18.dp))
             ConfigRow("Gapless", "ON", palette.accent)
             ConfigRow("Replay-gain", "ON", palette.accent)
         }
@@ -120,6 +126,31 @@ fun SettingsScreen(
             ConfigRow("Subscription", "Studio tier", palette.accent)
         }
         Spacer(Modifier.height(120.dp))
+    }
+}
+
+@Composable
+private fun FftBlockToggle(current: Int, onSelect: (Int) -> Unit, accent: Color) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        listOf(512, 1024, 2048, 4096, 8192).forEach { size ->
+            val selected = current == size
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (selected) accent.copy(alpha = 0.22f) else LocalMonoPalette.current.panelElevated)
+                    .border(1.dp, if (selected) accent else MonoColors.BorderSoft, RoundedCornerShape(2.dp))
+                    .clickable { onSelect(size) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    size.toString(),
+                    style = MonoTypography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = if (selected) accent else MonoColors.Fg2,
+                )
+            }
+        }
     }
 }
 
