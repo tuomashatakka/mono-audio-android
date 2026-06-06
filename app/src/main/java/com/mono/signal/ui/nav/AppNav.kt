@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +47,8 @@ private object Routes {
     const val LIBRARY = "library"
     const val NOW_PLAYING = "now_playing"
     const val SETTINGS = "settings"
+    const val AUDIO = "audio_processing"
+    const val QUEUE = "queue"
 }
 
 @Composable
@@ -125,8 +128,10 @@ fun AppNav() {
                     onSortBy = libraryViewModel::setSortBy,
                     onGroupBy = libraryViewModel::setGroupBy,
                     onSearch = libraryViewModel::setSearch,
+                    onAddToQueue = libraryViewModel::addToQueue,
+                    onPlayNext = libraryViewModel::playNext,
                     onOpenSettings = { switchTab(Routes.SETTINGS) },
-                    contentPadding = PaddingValues(top = 80.dp, bottom = 120.dp),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 170.dp),
                 )
             }
             composable(
@@ -150,29 +155,43 @@ fun AppNav() {
                     onEnableVisualizer = { launcher.launch(REQUIRED_PERMISSIONS) },
                 )
             }
+            composable(Routes.AUDIO) {
+                AudioProcessingScreen(onBack = { switchTab(Routes.LIBRARY) })
+            }
+            composable(Routes.QUEUE) {
+                QueueScreen(
+                    playback = nowPlayingState.playback,
+                    onBack = { switchTab(Routes.LIBRARY) },
+                    onRemove = nowPlayingViewModel::removeFromQueue,
+                )
+            }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     theme = themeConfig,
                     onBack = { switchTab(Routes.LIBRARY) },
                     onAccent = settingsViewModel::setAccent,
                     onBackground = settingsViewModel::setBackground,
+                    onFftBlockSize = settingsViewModel::setFftBlockSize,
                 )
             }
         }
 
-        Column(Modifier.align(Alignment.TopCenter)) {
+        Column(Modifier.align(Alignment.BottomCenter)) {
             MonoBottomNav(
                 selected = when (currentRoute) {
                     Routes.SETTINGS -> NavTab.CFG
+                    Routes.AUDIO -> NavTab.DSP
+                    Routes.QUEUE -> NavTab.QUE
                     Routes.NOW_PLAYING -> NavTab.NOW
                     else -> NavTab.LIB
                 },
                 onSelect = { tab ->
                     when (tab) {
                         NavTab.LIB -> switchTab(Routes.LIBRARY)
+                        NavTab.DSP -> switchTab(Routes.AUDIO)
                         NavTab.NOW -> navController.navigate(Routes.NOW_PLAYING)
+                        NavTab.QUE -> switchTab(Routes.QUEUE)
                         NavTab.CFG -> switchTab(Routes.SETTINGS)
-                        else -> Unit
                     }
                 },
             )
@@ -185,7 +204,7 @@ fun AppNav() {
                 onPrevious = nowPlayingViewModel::previous,
                 onNext = nowPlayingViewModel::next,
                 compact = currentRoute != Routes.NOW_PLAYING,
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 76.dp),
             )
         }
     }

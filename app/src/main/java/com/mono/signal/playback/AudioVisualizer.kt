@@ -10,7 +10,7 @@ import javax.inject.Singleton
  * [android.media.audiofx.Visualizer]; it now simply re-exposes the [PcmAudioTap], which reads the
  * player's real stereo PCM output. That removes the `RECORD_AUDIO` requirement and lifts the
  * Visualizer's ~20Hz / mono / 8-bit limits, so the live graphs get true L/R waveforms, a real
- * 1024-point FFT, and a 60Hz refresh.
+ * configurable-size FFT, and a 60Hz refresh.
  *
  * The session-based [start]/[release] hooks are retained as no-ops so existing wiring keeps
  * compiling — the tap is attached to the player's audio sink in [PlaybackService] instead.
