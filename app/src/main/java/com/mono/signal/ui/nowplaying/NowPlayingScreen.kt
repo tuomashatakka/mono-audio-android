@@ -14,14 +14,15 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import android.media.MediaMetadataRetriever
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -36,12 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mono.signal.model.NowPlayingGraphic
 import com.mono.signal.ui.components.AlbumArt
@@ -75,6 +76,7 @@ fun NowPlayingScreen(
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
     onEnableVisualizer: () -> Unit,
+    bottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
@@ -92,8 +94,7 @@ fun NowPlayingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(top = 68.dp, start = 28.dp, end = 28.dp),
+                .padding(top = 8.dp, start = 28.dp, end = 28.dp, bottom = bottomInset),
         ) {
         // Header: caret back · NOW PLAYING · more
         Row(
@@ -198,6 +199,7 @@ private fun GraphicArea(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onEnableVisualizer: () -> Unit,
+    bottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
@@ -212,23 +214,27 @@ private fun GraphicArea(
     ) {
         Crossfade(targetState = state.graphic, animationSpec = tween(320), label = "graphic") { graphic ->
             when (graphic) {
-                NowPlayingGraphic.ALBUM_ART -> AlbumArt(
-                    track = state.playback.currentTrack,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(state.playback.currentTrack?.id) {
-                            var totalDrag = 0f
-                            detectHorizontalDragGestures(
-                                onDragStart = { totalDrag = 0f },
-                                onDragEnd = {
+                NowPlayingGraphic.ALBUM_ART -> {
+                    var totalDrag by remember(state.playback.currentTrack?.id) { mutableStateOf(0f) }
+                    AlbumArt(
+                        track = state.playback.currentTrack,
+                        // Horizontal-only draggable: a clean tap still reaches the parent's
+                        // tap-to-cycle handler; a horizontal swipe goes prev/next without misfiring.
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .draggable(
+                                state = rememberDraggableState { delta -> totalDrag += delta },
+                                orientation = Orientation.Horizontal,
+                                onDragStarted = { totalDrag = 0f },
+                                onDragStopped = {
                                     when {
                                         totalDrag < -80f -> onNext()
                                         totalDrag > 80f -> onPrevious()
                                     }
                                 },
-                            ) { _, dragAmount -> totalDrag += dragAmount }
-                        },
-                )
+                            ),
+                    )
+                }
                 NowPlayingGraphic.WAVE_3D -> Waveform3DGraph(
                     waveformLeft = state.frame.waveformLeft,
                     waveformRight = state.frame.waveformRight,

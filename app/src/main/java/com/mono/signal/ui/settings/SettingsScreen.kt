@@ -53,7 +53,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(top = 68.dp, start = 28.dp, end = 28.dp),
+            .padding(top = 8.dp, start = 28.dp, end = 28.dp),
     ) {
         // Header
         Row(

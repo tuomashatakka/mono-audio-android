@@ -32,6 +32,9 @@ class PlaybackService : MediaSessionService() {
     /** Process-wide tap that turns the player's PCM output into live visualizer frames. */
     @Inject lateinit var pcmTap: PcmAudioTap
 
+    /** Live equalizer / compressor / limiter bound to the player session. */
+    @Inject lateinit var dspController: DspController
+
     private var mediaSession: MediaSession? = null
 
     override fun onCreate() {
@@ -74,6 +77,9 @@ class PlaybackService : MediaSessionService() {
             }
 
         mediaSession = MediaSession.Builder(this, player).build()
+
+        // Attach the DSP chain to whatever audio session the player publishes.
+        dspController.start()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
@@ -88,6 +94,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         sessionHolder.update(0)
+        dspController.release()
         mediaSession?.run {
             player.release()
             release()

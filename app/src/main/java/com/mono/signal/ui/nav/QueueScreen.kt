@@ -36,7 +36,7 @@ fun QueueScreen(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
-    Column(modifier.fillMaxSize().statusBarsPadding().padding(top = 68.dp, start = 28.dp, end = 28.dp)) {
+    Column(modifier.fillMaxSize().statusBarsPadding().padding(top = 8.dp, start = 28.dp, end = 28.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             MonoIconButton(MonoGlyph.CARET_LEFT, "Back", onBack)
             Spacer(Modifier.weight(1f)); MonoLabel("— QUEUE", color = palette.accent); Spacer(Modifier.weight(1f)); Spacer(Modifier.size(44.dp))

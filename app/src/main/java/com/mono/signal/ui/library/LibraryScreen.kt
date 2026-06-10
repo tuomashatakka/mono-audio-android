@@ -2,7 +2,6 @@ package com.mono.signal.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -76,7 +78,7 @@ fun LibraryScreen(
             .statusBarsPadding()
             .padding(horizontal = 28.dp),
     ) {
-        Spacer(Modifier.height(92.dp))
+        Spacer(Modifier.height(8.dp))
 
         // Header row: overview label + sort / group / settings on the right edge.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -160,20 +162,21 @@ private fun SwipeableTrackRow(
             modifier = Modifier
                 .offset { androidx.compose.ui.unit.IntOffset(offsetX.roundToInt(), 0) }
                 .background(LocalMonoPalette.current.background)
-                .pointerInput(track.id) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            when {
-                                offsetX > 96f -> onPlayNext()
-                                offsetX < -96f -> onAddToQueue()
-                            }
-                            offsetX = 0f
-                        },
-                        onDragCancel = { offsetX = 0f },
-                    ) { _, dragAmount ->
-                        offsetX = (offsetX + dragAmount).coerceIn(-180f, 180f)
-                    }
-                },
+                // Single-axis horizontal draggable cooperates with the LazyColumn's vertical
+                // scroll (orientation-locked slop), so the list no longer sticks on diagonal drags.
+                .draggable(
+                    state = rememberDraggableState { delta ->
+                        offsetX = (offsetX + delta).coerceIn(-180f, 180f)
+                    },
+                    orientation = Orientation.Horizontal,
+                    onDragStopped = {
+                        when {
+                            offsetX > 96f -> onPlayNext()
+                            offsetX < -96f -> onAddToQueue()
+                        }
+                        offsetX = 0f
+                    },
+                ),
         )
     }
 }
