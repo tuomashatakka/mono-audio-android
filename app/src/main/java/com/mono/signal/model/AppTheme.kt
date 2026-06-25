@@ -21,4 +21,5 @@ enum class BackgroundOption(val label: String) {
 data class ThemeConfig(
     val accent: AccentOption = AccentOption.TURQUOISE,
     val background: BackgroundOption = BackgroundOption.VOID,
+    val fftBlockSize: Int = 2048,
 )

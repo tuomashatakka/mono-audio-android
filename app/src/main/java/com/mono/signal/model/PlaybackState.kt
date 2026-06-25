@@ -14,6 +14,8 @@ data class PlaybackState(
     val durationMs: Long = 0L,
     val shuffle: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.OFF,
+    val queue: List<Track> = emptyList(),
+    val queueIndex: Int = -1,
 ) {
     val hasTrack: Boolean get() = currentTrack != null
 

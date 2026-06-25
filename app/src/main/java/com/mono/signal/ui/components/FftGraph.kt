@@ -28,8 +28,8 @@ private const val PeakHistoryFrames = 90
 
 /**
  * Log-spaced spectrum as continuous peak/RMS traces. Incoming capture buffers are tweened at
- * frame rate so the graph refreshes above 30Hz even when Android Visualizer callbacks arrive
- * more slowly. A third trace keeps a slowly degrading sliding peak history.
+ * ~60Hz so the graph stays fluid even between (≥30Hz) capture frames. A third trace keeps a
+ * slowly degrading sliding peak history.
  */
 @Composable
 fun FftGraph(
@@ -48,7 +48,7 @@ fun FftGraph(
         peakHistory.add(0, peakBands.copyOf())
         while (peakHistory.size > PeakHistoryFrames) peakHistory.removeAt(peakHistory.lastIndex)
         peakAnim.snapTo(0f)
-        peakAnim.animateTo(1f, tween(33, easing = LinearEasing))
+        peakAnim.animateTo(1f, tween(16, easing = LinearEasing))
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
@@ -68,6 +68,27 @@ fun FftGraph(
         drawAreaTrace(peak, palette.accent.copy(alpha = 0.18f), closeToBottom = true)
         drawTrace(peak, palette.accent, strokeWidth = 3f)
         drawTrace(rms, palette.sweep.getOrElse(1) { palette.accent }.copy(alpha = 0.9f), strokeWidth = 2f)
+
+        listOf(-60, -30, 0).forEach { db ->
+            val normalized = ((db + 60) / 60f).coerceIn(0f, 1f)
+            val y = size.height - (normalized * size.height * 0.9f) - size.height * 0.04f
+            drawLine(
+                color = MonoColors.Fg4.copy(alpha = 0.14f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1f,
+            )
+            drawContext.canvas.nativeCanvas.drawText(
+                "$db dB",
+                4f,
+                y - 4f,
+                android.graphics.Paint().apply {
+                    color = android.graphics.Color.argb(130, 234, 242, 245)
+                    textSize = 10.dp.toPx()
+                    isAntiAlias = true
+                },
+            )
+        }
 
         FrequencyLabels.forEach { hz ->
             val x = frequencyToX(hz.toFloat(), size.width)

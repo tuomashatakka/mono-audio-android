@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MONO Signal · Android</title>
+  <meta name="description" content="MONO Signal — a dark, sharp, neon-accented audio player for Android. Jetpack Compose." />
+  <meta name="theme-color" content="#050507" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;400;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --void:#050507; --ink:#0b0b10; --onyx:#111118; --graphite:#1a1a22; --slate:#2a2a35;
+      --fg1:#f4f4f8; --fg2:#c5c5d0; --fg3:#8888a0; --fg-inverse:#0a0a0e;
+      --turquoise:#00e5d1; --turquoise-glow:#5cffec; --crimson:#ff2e7e; --violet:#c8b6ff;
+      --hairline:rgba(255,255,255,.06); --soft:rgba(255,255,255,.10); --strong:rgba(255,255,255,.20);
+      --grad-edge:linear-gradient(90deg,transparent,var(--turquoise) 25%,var(--crimson) 75%,transparent);
+      --grad-primary:linear-gradient(90deg,var(--turquoise),var(--violet) 50%,var(--crimson));
+      --glow:0 0 0 1px rgba(0,229,209,.14),0 0 32px rgba(0,229,209,.25);
+      --ease:cubic-bezier(.16,1,.3,1);
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    ::selection{background:rgba(255,46,126,.25);color:var(--fg1)}
+    html{color-scheme:dark}
+    body{font-family:"Montserrat",system-ui,sans-serif;font-weight:300;color:var(--fg2);background:var(--void);min-height:100vh;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden;position:relative}
+    .shader{position:fixed;inset:0;pointer-events:none;z-index:0;
+      background:
+        radial-gradient(120% 80% at 0% 0%,rgba(0,229,209,.18),transparent 55%),
+        radial-gradient(120% 80% at 100% 100%,rgba(255,46,126,.16),transparent 55%),
+        radial-gradient(80% 80% at 50% 100%,rgba(200,182,255,.14),transparent 60%);
+      filter:blur(80px);opacity:.75;animation:drift 14s var(--ease) infinite alternate}
+    .conic{position:fixed;inset:-20%;pointer-events:none;z-index:0;
+      background:conic-gradient(from 220deg at 50% 50%,#00e5d1,#5cd1ff 70deg,#c8b6ff 150deg,#ff2e7e 230deg,#00e5d1);
+      opacity:.10;filter:blur(80px) saturate(140%);mix-blend-mode:screen;animation:spin 40s linear infinite}
+    @keyframes drift{to{transform:translate3d(-6%,4%,0) scale(1.15)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    main{position:relative;z-index:1;max-width:880px;margin:0 auto;padding:64px 24px;animation:enter 1100ms var(--ease) both}
+    @keyframes enter{0%{opacity:0;filter:blur(40px);transform:scale(1.03)}100%{opacity:1;filter:blur(0);transform:scale(1)}}
+    .eyebrow{font-size:11px;font-weight:400;text-transform:uppercase;letter-spacing:.24em;color:var(--fg3);margin-bottom:24px}
+    .eyebrow::before{content:"— ";color:var(--turquoise)}
+    h1{font-weight:100;font-size:clamp(56px,15vw,140px);line-height:.9;letter-spacing:-.04em;color:var(--fg1)}
+    h1 b{font-weight:100;background:var(--grad-primary);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .lede{font-size:clamp(16px,2.4vw,22px);color:var(--fg2);max-width:46ch;margin-top:24px}
+    .panel{position:relative;background:rgba(17,17,24,.55);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);border:1px solid var(--hairline);padding:32px;overflow:hidden;margin-top:48px}
+    .panel::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:var(--grad-edge);opacity:.7}
+    .panel h2{font-weight:300;font-size:14px;text-transform:uppercase;letter-spacing:.18em;color:var(--fg3);margin-bottom:24px}
+    .row{display:flex;flex-wrap:wrap;gap:12px}
+    .btn{position:relative;display:inline-flex;align-items:center;gap:12px;min-height:56px;padding:0 24px;text-decoration:none;overflow:hidden;font-size:13px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--fg1);background:var(--graphite);border:1px solid var(--soft);transition:all .32s var(--ease)}
+    .btn::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:var(--grad-edge);opacity:.5}
+    .btn:hover{background:var(--slate);border-color:var(--strong)}
+    .btn.primary{background:var(--turquoise);border-color:var(--turquoise);color:var(--fg-inverse)}
+    .btn.primary:hover{background:var(--turquoise-glow);box-shadow:var(--glow)}
+    .features{display:grid;gap:16px;grid-template-columns:1fr;margin-top:48px}
+    @media(min-width:720px){.features{grid-template-columns:repeat(3,1fr)}}
+    .feature{position:relative;background:var(--onyx);border:1px solid var(--hairline);padding:24px;overflow:hidden}
+    .feature::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:var(--grad-edge);opacity:.5}
+    .feature .g{font-size:28px;color:var(--turquoise);display:block;margin-bottom:16px}
+    .feature h3{font-weight:400;font-size:15px;color:var(--fg1);margin-bottom:8px}
+    .feature p{font-size:13px;color:var(--fg3)}
+    footer{position:relative;z-index:1;text-align:center;padding:48px 24px;color:var(--fg3);font-size:11px;letter-spacing:.12em}
+    footer a{color:var(--fg2);text-decoration:none}
+    footer a:hover{color:var(--turquoise)}
+    @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+  </style>
+</head>
+<body>
+  <div class="shader"></div>
+  <div class="conic"></div>
+  <main>
+    <p class="eyebrow">Audio player · Android</p>
+    <h1>MONO<b>.</b></h1>
+    <p class="lede">A dark, sharp, neon-accented player for your local library. Built with Jetpack&nbsp;Compose &amp; Material&nbsp;3.</p>
+
+    <section class="panel">
+      <h2>Get the app</h2>
+      <div class="row">
+        <a class="btn primary" href="https://github.com/tuomashatakka/mono-audio-android/releases/latest">Download APK</a>
+        <a class="btn" href="https://github.com/tuomashatakka/mono-audio-android/releases">All releases</a>
+        <a class="btn" href="https://github.com/tuomashatakka/mono-audio-android">Source</a>
+      </div>
+    </section>
+
+    <section class="features">
+      <article class="feature"><span class="g">◇</span><h3>Library</h3><p>Browse and play your on-device music with fast, metadata-aware navigation.</p></article>
+      <article class="feature"><span class="g">▸</span><h3>DSP</h3><p>Live spectrum &amp; waveform views driven by an accent-gradient render.</p></article>
+      <article class="feature"><span class="g">✦</span><h3>Tuned</h3><p>Flat monochrome surfaces, sharp corners, Montserrat type. Zero fluff.</p></article>
+    </section>
+  </main>
+  <footer><a href="https://github.com/tuomashatakka/mono-audio-android">github.com/tuomashatakka/mono-audio-android</a> · MONO design system</footer>
+</body>
+</html>

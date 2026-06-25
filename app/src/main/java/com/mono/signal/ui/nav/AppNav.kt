@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,7 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,6 +41,7 @@ import com.mono.signal.ui.components.NavTab
 import com.mono.signal.ui.library.LibraryScreen
 import com.mono.signal.ui.nowplaying.NowPlayingScreen
 import com.mono.signal.ui.settings.SettingsScreen
+import com.mono.signal.viewmodel.DspViewModel
 import com.mono.signal.viewmodel.LibraryViewModel
 import com.mono.signal.viewmodel.NowPlayingViewModel
 import com.mono.signal.viewmodel.SettingsViewModel
@@ -46,6 +50,8 @@ private object Routes {
     const val LIBRARY = "library"
     const val NOW_PLAYING = "now_playing"
     const val SETTINGS = "settings"
+    const val AUDIO = "audio_processing"
+    const val QUEUE = "queue"
 }
 
 @Composable
@@ -58,6 +64,12 @@ fun AppNav() {
     val libraryState by libraryViewModel.uiState.collectAsStateWithLifecycle()
     val nowPlayingState by nowPlayingViewModel.uiState.collectAsStateWithLifecycle()
     val themeConfig by settingsViewModel.theme.collectAsStateWithLifecycle()
+
+    // The bottom nav is an overlay, so screens must reserve its measured height (which
+    // includes the system navigation-bar inset) to keep transport/mini-player above it.
+    val density = LocalDensity.current
+    var navBarHeightPx by remember { mutableStateOf(0) }
+    val navBarHeight = with(density) { navBarHeightPx.toDp() }
 
     val context = LocalContext.current
     var audioGranted by remember {
@@ -125,8 +137,10 @@ fun AppNav() {
                     onSortBy = libraryViewModel::setSortBy,
                     onGroupBy = libraryViewModel::setGroupBy,
                     onSearch = libraryViewModel::setSearch,
+                    onAddToQueue = libraryViewModel::addToQueue,
+                    onPlayNext = libraryViewModel::playNext,
                     onOpenSettings = { switchTab(Routes.SETTINGS) },
-                    contentPadding = PaddingValues(top = 80.dp, bottom = 120.dp),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = navBarHeight + 96.dp),
                 )
             }
             composable(
@@ -148,6 +162,28 @@ fun AppNav() {
                     onShuffle = nowPlayingViewModel::toggleShuffle,
                     onRepeat = nowPlayingViewModel::cycleRepeat,
                     onEnableVisualizer = { launcher.launch(REQUIRED_PERMISSIONS) },
+                    bottomInset = navBarHeight,
+                )
+            }
+            composable(Routes.AUDIO) {
+                val dspViewModel: DspViewModel = hiltViewModel()
+                val dspConfig by dspViewModel.config.collectAsStateWithLifecycle()
+                AudioProcessingScreen(
+                    config = dspConfig,
+                    onEnabled = dspViewModel::setEnabled,
+                    onEqBand = dspViewModel::setEqBand,
+                    onPreset = dspViewModel::setEqBands,
+                    onFlat = dspViewModel::resetEq,
+                    onCompressor = dspViewModel::setCompressor,
+                    onLimiter = dspViewModel::setLimiter,
+                    onBack = { switchTab(Routes.LIBRARY) },
+                )
+            }
+            composable(Routes.QUEUE) {
+                QueueScreen(
+                    playback = nowPlayingState.playback,
+                    onBack = { switchTab(Routes.LIBRARY) },
+                    onRemove = nowPlayingViewModel::removeFromQueue,
                 )
             }
             composable(Routes.SETTINGS) {
@@ -156,23 +192,29 @@ fun AppNav() {
                     onBack = { switchTab(Routes.LIBRARY) },
                     onAccent = settingsViewModel::setAccent,
                     onBackground = settingsViewModel::setBackground,
+                    onFftBlockSize = settingsViewModel::setFftBlockSize,
                 )
             }
         }
 
-        Column(Modifier.align(Alignment.TopCenter)) {
+        Column(
+            Modifier.align(Alignment.BottomCenter).onSizeChanged { navBarHeightPx = it.height },
+        ) {
             MonoBottomNav(
                 selected = when (currentRoute) {
                     Routes.SETTINGS -> NavTab.CFG
+                    Routes.AUDIO -> NavTab.DSP
+                    Routes.QUEUE -> NavTab.QUE
                     Routes.NOW_PLAYING -> NavTab.NOW
                     else -> NavTab.LIB
                 },
                 onSelect = { tab ->
                     when (tab) {
                         NavTab.LIB -> switchTab(Routes.LIBRARY)
+                        NavTab.DSP -> switchTab(Routes.AUDIO)
                         NavTab.NOW -> navController.navigate(Routes.NOW_PLAYING)
+                        NavTab.QUE -> switchTab(Routes.QUEUE)
                         NavTab.CFG -> switchTab(Routes.SETTINGS)
-                        else -> Unit
                     }
                 },
             )
@@ -185,7 +227,7 @@ fun AppNav() {
                 onPrevious = nowPlayingViewModel::previous,
                 onNext = nowPlayingViewModel::next,
                 compact = currentRoute != Routes.NOW_PLAYING,
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = navBarHeight),
             )
         }
     }

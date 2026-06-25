@@ -37,6 +37,7 @@ fun MonoTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = MonoTypography,
+            shapes = MonoShapes,
             content = content,
         )
     }

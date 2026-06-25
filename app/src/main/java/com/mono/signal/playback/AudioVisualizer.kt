@@ -1,97 +1,32 @@
 package com.mono.signal.playback
 
-import android.media.audiofx.Visualizer
-import android.util.Log
 import com.mono.signal.model.VisualizerFrame
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Thin wrapper over [android.media.audiofx.Visualizer]. Attaches to the player's audio
- * session and exposes live [VisualizerFrame]s (smoothed FFT bands + waveform points).
+ * UI-facing source of live [VisualizerFrame]s. Historically this wrapped Android's
+ * [android.media.audiofx.Visualizer]; it now simply re-exposes the [PcmAudioTap], which reads the
+ * player's real stereo PCM output. That removes the `RECORD_AUDIO` requirement and lifts the
+ * Visualizer's ~20Hz / mono / 8-bit limits, so the live graphs get true L/R waveforms, a real
+ * configurable-size FFT, and a 60Hz refresh.
  *
- * Requires the RECORD_AUDIO permission. Fails soft: if the Visualizer can't be created
- * (no permission, unsupported device), the frame flow simply stays empty.
+ * The session-based [start]/[release] hooks are retained as no-ops so existing wiring keeps
+ * compiling — the tap is attached to the player's audio sink in [PlaybackService] instead.
  */
 @Singleton
-class AudioVisualizer @Inject constructor() {
+class AudioVisualizer @Inject constructor(private val tap: PcmAudioTap) {
 
-    private val _frames = MutableStateFlow(VisualizerFrame.empty())
-    val frames: StateFlow<VisualizerFrame> = _frames.asStateFlow()
+    /** Live frames (smoothed FFT bands + mono/L/R waveform points). */
+    val frames: StateFlow<VisualizerFrame> = tap.frames
 
-    /** True while a Visualizer is attached and capturing (i.e. the live graphs have data). */
-    private val _active = MutableStateFlow(false)
-    val active: StateFlow<Boolean> = _active.asStateFlow()
+    /** True while audio is flowing through the tap (i.e. the live graphs have fresh data). */
+    val active: StateFlow<Boolean> = tap.active
 
-    private var visualizer: Visualizer? = null
-    private var currentSession = 0
-    private var smoothedPeakBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
-    private var smoothedRmsBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
-    private var lastWaveform = FloatArray(VisualizerDsp.DEFAULT_WAVE_POINTS)
+    /** No-op: the tap is wired into the player's audio sink, not attached per session. */
+    fun start(sessionId: Int) = Unit
 
-    @Synchronized
-    fun start(sessionId: Int) {
-        if (sessionId == 0 || sessionId == currentSession) return
-        release()
-        runCatching {
-            visualizer = Visualizer(sessionId).apply {
-                captureSize = Visualizer.getCaptureSizeRange()[1]
-                val rate = Visualizer.getMaxCaptureRate()
-                setDataCaptureListener(listener, rate, true, true)
-                enabled = true
-            }
-            currentSession = sessionId
-            _active.value = true
-        }.onFailure {
-            Log.w(TAG, "Visualizer unavailable for session $sessionId", it)
-            _active.value = false
-        }
-    }
-
-    @Synchronized
-    fun release() {
-        runCatching {
-            visualizer?.enabled = false
-            visualizer?.release()
-        }
-        visualizer = null
-        currentSession = 0
-        _active.value = false
-        smoothedPeakBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
-        smoothedRmsBands = FloatArray(VisualizerDsp.DEFAULT_BANDS)
-        lastWaveform = FloatArray(VisualizerDsp.DEFAULT_WAVE_POINTS)
-        _frames.value = VisualizerFrame.empty()
-    }
-
-    private val listener = object : Visualizer.OnDataCaptureListener {
-        override fun onWaveFormDataCapture(v: Visualizer?, waveform: ByteArray?, samplingRate: Int) {
-            waveform ?: return
-            lastWaveform = VisualizerDsp.waveformToFloats(waveform)
-            emit()
-        }
-
-        override fun onFftDataCapture(v: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-            fft ?: return
-            val target = VisualizerDsp.fftToPeakAndRmsBands(fft)
-            smoothedPeakBands = VisualizerDsp.smooth(smoothedPeakBands, target.peak)
-            smoothedRmsBands = VisualizerDsp.smooth(smoothedRmsBands, target.rms, attack = 0.42f, decay = 0.18f)
-            emit()
-        }
-    }
-
-    private fun emit() {
-        _frames.value = VisualizerFrame(
-            fftBands = smoothedPeakBands.copyOf(),
-            waveform = lastWaveform.copyOf(),
-            fftPeakBands = smoothedPeakBands.copyOf(),
-            fftRmsBands = smoothedRmsBands.copyOf(),
-        )
-    }
-
-    private companion object {
-        const val TAG = "AudioVisualizer"
-    }
+    /** No-op: the tap lives for the process; nothing to release here. */
+    fun release() = Unit
 }
