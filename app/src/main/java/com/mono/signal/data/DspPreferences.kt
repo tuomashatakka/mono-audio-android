@@ -11,7 +11,8 @@ import javax.inject.Singleton
 
 /**
  * Persists the audio-processing chain ([DspConfig]) in SharedPreferences and exposes it as a
- * [StateFlow] so both the UI and [com.mono.signal.playback.DspController] react to every change.
+ * [StateFlow] so both the UI and [com.mono.signal.playback.dsp.MonoDspAudioProcessor] react to
+ * every change.
  * Mirrors [ThemePreferences]: read synchronously on construction, write granularly.
  */
 @Singleton
