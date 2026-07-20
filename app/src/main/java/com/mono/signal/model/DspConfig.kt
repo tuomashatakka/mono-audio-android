@@ -3,9 +3,9 @@ package com.mono.signal.model
 /**
  * Immutable snapshot of the audio-processing chain the user has dialed in on the DSP screen.
  *
- * The values map 1:1 onto an [android.media.audiofx.DynamicsProcessing] effect attached to the
- * player's audio session (see `playback/DspController.kt`): [eqBands] drive a multiband pre-EQ,
- * [compressor] a single MBC band, and [limiter] the output limiter. Gains are in dB.
+ * The values drive the in-process effect chain the audio sink runs on every PCM buffer (see
+ * `playback/dsp/MonoDspAudioProcessor.kt`): [eqBands] a 12-band peaking-EQ bank, [compressor] a
+ * stereo-linked compressor, and [limiter] the output limiter. Gains are in dB.
  */
 data class DspConfig(
     val enabled: Boolean = false,
