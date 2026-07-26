@@ -41,6 +41,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mono.signal.model.DspConfig
 import com.mono.signal.ui.components.MonoIconButton
@@ -65,18 +66,19 @@ fun AudioProcessingScreen(
     onCompressor: (DspConfig.Compressor) -> Unit,
     onLimiter: (DspConfig.Limiter) -> Unit,
     onBack: () -> Unit,
+    bottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
     Column(
         modifier = modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
-            .padding(top = 8.dp, start = 28.dp, end = 28.dp, bottom = 130.dp),
+            .padding(top = 8.dp, start = 32.dp, end = 32.dp, bottom = bottomInset + 112.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             MonoIconButton(MonoGlyph.CARET_LEFT, "Back", onBack)
             Spacer(Modifier.weight(1f)); MonoLabel("— AUDIO DSP", color = palette.accent); Spacer(Modifier.weight(1f)); Spacer(Modifier.size(44.dp))
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(28.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Audio processing", style = MonoTypography.displaySmall, color = MonoColors.Fg1, modifier = Modifier.weight(1f))
             Switch(

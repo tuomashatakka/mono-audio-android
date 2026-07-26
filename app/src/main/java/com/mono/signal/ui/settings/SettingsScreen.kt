@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mono.signal.model.AccentOption
@@ -45,6 +46,7 @@ fun SettingsScreen(
     onAccent: (AccentOption) -> Unit,
     onBackground: (BackgroundOption) -> Unit,
     onFftBlockSize: (Int) -> Unit,
+    bottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
@@ -53,7 +55,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(top = 8.dp, start = 28.dp, end = 28.dp),
+            .padding(top = 8.dp, start = 32.dp, end = 32.dp),
     ) {
         // Header
         Row(
@@ -66,10 +68,10 @@ fun SettingsScreen(
             Spacer(Modifier.weight(1f))
             Spacer(Modifier.size(44.dp))
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(28.dp))
         Text("Settings", style = MonoTypography.displaySmall, color = MonoColors.Fg1)
 
-        Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(40.dp))
 
         // ---- Appearance ----
         Section("APPEARANCE") {
@@ -125,7 +127,7 @@ fun SettingsScreen(
             ConfigRow("Display name", "K. NOVA", palette.accent)
             ConfigRow("Subscription", "Studio tier", palette.accent)
         }
-        Spacer(Modifier.height(120.dp))
+        Spacer(Modifier.height(bottomInset + 112.dp))
     }
 }
 

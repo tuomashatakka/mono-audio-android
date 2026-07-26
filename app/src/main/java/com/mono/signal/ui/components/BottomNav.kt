@@ -28,12 +28,11 @@ import com.mono.signal.ui.theme.MonoLabelStyle
 enum class NavTab(val label: String, val glyph: MonoGlyph, val enabled: Boolean) {
     LIB("LIB", MonoGlyph.NAV_LIB, true),
     DSP("DSP", MonoGlyph.NAV_SCN, true),
-    NOW("NOW", MonoGlyph.NAV_NOW, true),
     QUE("QUE", MonoGlyph.NAV_QUE, true),
     CFG("CFG", MonoGlyph.NAV_CFG, true),
 }
 
-/** The five-slot bottom nav from the reference. */
+/** The section tab bar. Each slot maps to a page of the swipeable pager in [AppNav]. */
 @Composable
 fun MonoBottomNav(
     selected: NavTab,
@@ -47,7 +46,7 @@ fun MonoBottomNav(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(vertical = 10.dp),
+                .padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             NavTab.entries.forEach { tab ->
