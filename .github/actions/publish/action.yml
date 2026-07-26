@@ -1,5 +1,5 @@
-name: Publish Draft Release
-description: Download the APK artifact produced by the build action and publish a draft GitHub release.
+name: Publish Release
+description: Download the APK artifact produced by the build action and publish a GitHub release (draft by default).
 
 inputs:
   artifact-name:
@@ -9,6 +9,17 @@ inputs:
   github-token:
     description: Token used to create the release.
     required: true
+  draft:
+    description: >-
+      Publish as a draft ("true") or a real, published release ("false").
+      A published release is tagged v<versionName>; a draft is tagged
+      v<versionName>-dev.<run_number> so successive draft builds never collide.
+    required: false
+    default: "true"
+  prerelease:
+    description: Mark the release as a pre-release.
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -24,13 +35,18 @@ runs:
       shell: bash
       run: |
         VERSION_NAME=$(grep -m1 'versionName' app/build.gradle.kts | sed -E 's/.*"(.*)".*/\1/')
-        echo "tag=v${VERSION_NAME}-dev.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+        if [ "${{ inputs.draft }}" = "false" ]; then
+          echo "tag=v${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+        else
+          echo "tag=v${VERSION_NAME}-dev.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+        fi
 
-    - name: Publish draft release
+    - name: Publish release
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ inputs.github-token }}
-        draft: true
+        draft: ${{ inputs.draft }}
+        prerelease: ${{ inputs.prerelease }}
         tag_name: ${{ steps.meta.outputs.tag }}
         target_commitish: ${{ github.sha }}
         name: MONO Signal ${{ steps.meta.outputs.tag }}
