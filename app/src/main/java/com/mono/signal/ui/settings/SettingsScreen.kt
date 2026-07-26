@@ -107,27 +107,17 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(MonoSpacing.xl))
 
-        // ---- Reference config sections (display only for the MVP) ----
-        Section("AUDIO") {
-            ConfigRow("Sample rate", "48 kHz", palette.accent)
-            Spacer(Modifier.height(MonoSpacing.sm))
+        Section("ANALYSIS") {
             Text("FFT BLOCKS", style = MonoTypography.bodySmall.copy(letterSpacing = 2.sp), color = MonoColors.Fg3)
             Spacer(Modifier.height(MonoSpacing.sm))
             FftBlockToggle(theme.fftBlockSize, onFftBlockSize, palette.accent)
-            Spacer(Modifier.height(MonoSpacing.md))
-            ConfigRow("Gapless", "ON", palette.accent)
-            ConfigRow("Replay-gain", "ON", palette.accent)
-        }
-        Spacer(Modifier.height(MonoSpacing.lg))
-        Section("PLAYBACK") {
-            ConfigRow("Crossfade", "0 s", palette.accent)
-            ConfigRow("Default visualizer", "Match track", palette.accent)
-            ConfigRow("Skip silent intros", "OFF", MonoColors.Fg3)
-        }
-        Spacer(Modifier.height(MonoSpacing.lg))
-        Section("ACCOUNT") {
-            ConfigRow("Display name", "K. NOVA", palette.accent)
-            ConfigRow("Subscription", "Studio tier", palette.accent)
+            Spacer(Modifier.height(MonoSpacing.xs))
+            Text(
+                "Window the visualizer's FFT runs on. Larger blocks resolve low frequencies; " +
+                    "smaller blocks react faster.",
+                style = MonoTypography.bodySmall,
+                color = MonoColors.Fg3,
+            )
         }
         Spacer(Modifier.height(bottomInset + MonoSpacing.playerClearance))
     }
@@ -164,27 +154,6 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     MonoLabel("— $title", color = palette.accent)
     Spacer(Modifier.height(MonoSpacing.sm))
     content()
-}
-
-@Composable
-private fun ConfigRow(label: String, value: String, valueColor: Color) {
-    val palette = LocalMonoPalette.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = MonoSpacing.xs)
-            .clip(RoundedCornerShape(MonoRadius.sm))
-            .background(palette.panelElevated)
-            .padding(horizontal = MonoSpacing.md, vertical = MonoSpacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MonoTypography.bodyMedium, color = MonoColors.Fg1, modifier = Modifier.weight(1f))
-        Text(
-            value,
-            style = MonoTypography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            color = valueColor,
-        )
-    }
 }
 
 @Composable

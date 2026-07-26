@@ -32,9 +32,10 @@ class CompressorCoreTest {
         ratio: Float,
         attackMs: Float = 5f,
         releaseMs: Float = 50f,
+        makeupGainDb: Float = 0f,
     ): FloatArray {
         val comp = CompressorCore()
-        comp.configure(sampleRate, attackMs, releaseMs, thresholdDb, ratio)
+        comp.configure(sampleRate, attackMs, releaseMs, thresholdDb, ratio, makeupGainDb)
         val left = input.copyOf()
         val right = input.copyOf()
         comp.processStereo(left, right, left.size)
@@ -77,6 +78,31 @@ class CompressorCoreTest {
         assertTrue("expected ratio 80 ($brickish dB) below ratio 4 ($gentle dB)", brickish < gentle)
         // 80:1 leaves the level essentially at threshold.
         assertEquals(-18.0, brickish, 1.0)
+    }
+
+    @Test
+    fun makeupGain_liftsUncompressedSignalByExactlyThatMuch() {
+        // Ratio 1:1 keeps the detector out of it, so the only change is the flat makeup stage.
+        val input = sine(1000f, sampleRate, amplitudeDb = -30f)
+        val output = compress(input, thresholdDb = -18f, ratio = 1f, makeupGainDb = 6f)
+        assertEquals(-24.0, steadyPeakDb(output), 0.01)
+    }
+
+    @Test
+    fun makeupGain_addsOnTopOfGainReduction() {
+        // -6 dBFS in, threshold -18, ratio 4 -> -15 dBFS; +9 dB makeup lands it at -6 again.
+        val input = sine(1000f, sampleRate, amplitudeDb = -6f)
+        val output = compress(input, thresholdDb = -18f, ratio = 4f, makeupGainDb = 9f)
+        assertEquals(-6.0, steadyPeakDb(output), 1.0)
+    }
+
+    @Test
+    fun zeroMakeupGain_isBitExactBypass() {
+        val input = sine(1000f, sampleRate, amplitudeDb = -6f)
+        val output = compress(input, thresholdDb = -18f, ratio = 1f, makeupGainDb = 0f)
+        for (i in input.indices) {
+            assertEquals(input[i], output[i], 0f)
+        }
     }
 
     @Test

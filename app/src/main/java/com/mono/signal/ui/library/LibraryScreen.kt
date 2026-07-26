@@ -40,6 +40,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.mono.signal.model.GroupBy
@@ -57,6 +58,9 @@ import com.mono.signal.ui.theme.MonoRadius
 import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
 import com.mono.signal.viewmodel.LibraryUiState
+
+/** Left inset that sets grouped track rows in under their section header. */
+private val GroupIndent = MonoSpacing.lg
 
 @Composable
 fun LibraryScreen(
@@ -126,6 +130,7 @@ fun LibraryScreen(
                                 onClick = { onTrackClick(track) },
                                 onAddToQueue = { onAddToQueue(track) },
                                 onPlayNext = { onPlayNext(track) },
+                                indent = if (header != null) GroupIndent else 0.dp,
                             )
                         }
                     }
@@ -142,10 +147,11 @@ private fun SwipeableTrackRow(
     onClick: () -> Unit,
     onAddToQueue: () -> Unit,
     onPlayNext: () -> Unit,
+    indent: Dp = 0.dp,
 ) {
     val palette = LocalMonoPalette.current
     var offsetX by remember { mutableStateOf(0f) }
-    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(MonoRadius.sm))) {
+    Box(Modifier.fillMaxWidth().padding(start = indent).clip(RoundedCornerShape(MonoRadius.sm))) {
         Row(
             Modifier.matchParentSize().background(if (offsetX >= 0) palette.accent.copy(alpha = 0.18f) else MonoColors.Fg3.copy(alpha = 0.12f)).padding(horizontal = MonoSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
@@ -199,8 +205,9 @@ private fun GroupHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MonoSpacing.md),
     ) {
+        // Collapsed points at the hidden rows (right); expanded points down the list it opened.
         MonoIconButton(
-            glyph = if (collapsed) MonoGlyph.CARET_RIGHT else MonoGlyph.CARET_LEFT,
+            glyph = if (collapsed) MonoGlyph.CARET_RIGHT else MonoGlyph.CARET_DOWN,
             contentDescription = if (collapsed) "Expand group" else "Collapse group",
             onClick = onClick,
             size = 48.dp,

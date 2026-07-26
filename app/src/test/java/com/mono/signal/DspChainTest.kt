@@ -99,6 +99,30 @@ class DspChainTest {
     }
 
     @Test
+    fun compressorMakeupGain_onlyAppliesWhileToggledOn() {
+        val input = sine(440f, 8192, 48_000, amplitude = 0.05f)
+
+        fun runWith(enabled: Boolean): FloatArray {
+            val chain = DspChain(channelCount = 1)
+            chain.configure(
+                48_000,
+                neutralConfig().copy(
+                    compressor = DspConfig.Compressor(
+                        ratio = 1f,
+                        makeupGainEnabled = enabled,
+                        makeupGainDb = 12f,
+                    ),
+                ),
+            )
+            return input.copyOf().also { chain.process(arrayOf(it), it.size) }
+        }
+
+        // Toggled off, the dialed-in 12 dB is inert; toggled on it lands exactly.
+        assertEquals(0.0, 20 * log10(steadyRms(runWith(false)) / steadyRms(input)), 0.05)
+        assertEquals(12.0, 20 * log10(steadyRms(runWith(true)) / steadyRms(input)), 0.05)
+    }
+
+    @Test
     fun reset_clearsAllStateSoSilenceStaysSilent() {
         val bandIndex = DspConfig.EQ_FREQUENCIES.indexOfFirst { it == 960f }
         val chain = DspChain(channelCount = 1)
