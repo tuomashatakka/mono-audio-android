@@ -76,9 +76,9 @@ fun LibraryScreen(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = 32.dp),
     ) {
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
         // Header row: overview label + sort / group / settings on the right edge.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -88,12 +88,12 @@ fun LibraryScreen(
             GroupMenu(state.groupBy, onGroupBy, palette.accent)
             MonoIconButton(MonoGlyph.SETTINGS, "Settings", onOpenSettings, accent = palette.accent)
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(10.dp))
         Text("Library", style = MonoTypography.displaySmall, color = MonoColors.Fg1)
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(24.dp))
 
         SearchField(state.search, onSearch, palette.accent)
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(24.dp))
         EdgeGradientLine()
 
         when {

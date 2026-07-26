@@ -3,24 +3,28 @@ package com.mono.signal.ui.nav
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
-import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,10 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.mono.signal.ui.components.MiniPlayer
 import com.mono.signal.ui.components.MonoBottomNav
 import com.mono.signal.ui.components.NavTab
@@ -45,28 +45,37 @@ import com.mono.signal.viewmodel.DspViewModel
 import com.mono.signal.viewmodel.LibraryViewModel
 import com.mono.signal.viewmodel.NowPlayingViewModel
 import com.mono.signal.viewmodel.SettingsViewModel
+import kotlinx.coroutines.launch
 
-private object Routes {
-    const val LIBRARY = "library"
-    const val NOW_PLAYING = "now_playing"
-    const val SETTINGS = "settings"
-    const val AUDIO = "audio_processing"
-    const val QUEUE = "queue"
-}
+/** Left-to-right order of the swipeable section tabs, mirrored by the bottom nav. */
+private val TABS = listOf(NavTab.LIB, NavTab.DSP, NavTab.QUE, NavTab.CFG)
 
 @Composable
 fun AppNav() {
-    val navController = rememberNavController()
     val libraryViewModel: LibraryViewModel = hiltViewModel()
     val nowPlayingViewModel: NowPlayingViewModel = hiltViewModel()
     val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val dspViewModel: DspViewModel = hiltViewModel()
 
     val libraryState by libraryViewModel.uiState.collectAsStateWithLifecycle()
     val nowPlayingState by nowPlayingViewModel.uiState.collectAsStateWithLifecycle()
     val themeConfig by settingsViewModel.theme.collectAsStateWithLifecycle()
+    val dspConfig by dspViewModel.config.collectAsStateWithLifecycle()
 
-    // The bottom nav is an overlay, so screens must reserve its measured height (which
-    // includes the system navigation-bar inset) to keep transport/mini-player above it.
+    val pagerState = rememberPagerState(pageCount = { TABS.size })
+    val scope = rememberCoroutineScope()
+
+    // Now Playing is a full-screen overlay (no bottom toolbar), opened from a track tap or the
+    // mini-player rather than being one of the swipeable tabs.
+    var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
+
+    fun goToTab(tab: NavTab) {
+        val page = TABS.indexOf(tab)
+        if (page >= 0) scope.launch { pagerState.animateScrollToPage(page) }
+    }
+
+    // The bottom nav is an overlay, so the pages reserve its measured height (which includes the
+    // system navigation-bar inset) to keep the mini-player above it.
     val density = LocalDensity.current
     var navBarHeightPx by remember { mutableStateOf(0) }
     val navBarHeight = with(density) { navBarHeightPx.toDp() }
@@ -95,43 +104,29 @@ fun AppNav() {
         if (!readGranted || !audioGranted) launcher.launch(REQUIRED_PERMISSIONS)
     }
 
-    val backStack by navController.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route
-    BackHandler {
-        if (currentRoute != Routes.LIBRARY) {
-            navController.navigate(Routes.LIBRARY) { popUpTo(Routes.LIBRARY) { inclusive = false } }
-        } else {
-            (context as? Activity)?.finish()
-        }
-    }
-
-    fun switchTab(route: String) {
-        if (route == currentRoute) return
-        navController.navigate(route) {
-            popUpTo(Routes.LIBRARY) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+    // Back: close Now Playing first, then step back to the Library tab; otherwise let the system
+    // handle it (finishing the activity).
+    BackHandler(enabled = nowPlayingOpen || pagerState.currentPage != 0) {
+        when {
+            nowPlayingOpen -> nowPlayingOpen = false
+            else -> scope.launch { pagerState.animateScrollToPage(0) }
         }
     }
 
     Box(Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = Routes.LIBRARY,
-            enterTransition = { slideInHorizontally(tween(300)) { it / 6 } + fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(180)) },
-            popEnterTransition = { fadeIn(tween(240)) },
-            popExitTransition = {
-                slideOutHorizontally(tween(260)) { it / 6 } + fadeOut(tween(220))
-            },
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier.fillMaxSize(),
-        ) {
-            composable(Routes.LIBRARY) {
-                LibraryScreen(
+            // Section pages hold no cross-page drag gestures, so full-width swiping moves cleanly
+            // between tabs. (Library rows keep their own horizontal swipe-to-queue action.)
+            key = { TABS[it] },
+        ) { page ->
+            when (TABS[page]) {
+                NavTab.LIB -> LibraryScreen(
                     state = libraryState,
                     onTrackClick = { track ->
                         libraryViewModel.onTrackClick(track)
-                        navController.navigate(Routes.NOW_PLAYING)
+                        nowPlayingOpen = true
                     },
                     onRequestPermission = { launcher.launch(REQUIRED_PERMISSIONS) },
                     onSortBy = libraryViewModel::setSortBy,
@@ -139,36 +134,10 @@ fun AppNav() {
                     onSearch = libraryViewModel::setSearch,
                     onAddToQueue = libraryViewModel::addToQueue,
                     onPlayNext = libraryViewModel::playNext,
-                    onOpenSettings = { switchTab(Routes.SETTINGS) },
-                    contentPadding = PaddingValues(top = 8.dp, bottom = navBarHeight + 96.dp),
+                    onOpenSettings = { goToTab(NavTab.CFG) },
+                    contentPadding = PaddingValues(top = 8.dp, bottom = navBarHeight + 104.dp),
                 )
-            }
-            composable(
-                Routes.NOW_PLAYING,
-                enterTransition = { slideInHorizontally(tween(320)) { it } + fadeIn(tween(320)) },
-                popExitTransition = { slideOutHorizontally(tween(300)) { it } + fadeOut(tween(260)) },
-            ) {
-                NowPlayingScreen(
-                    state = nowPlayingState,
-                    audioGranted = audioGranted,
-                    onBack = { switchTab(Routes.LIBRARY) },
-                    onCycleGraphic = nowPlayingViewModel::cycleGraphic,
-                    onPlayPause = nowPlayingViewModel::togglePlayPause,
-                    onNext = nowPlayingViewModel::next,
-                    onPrevious = nowPlayingViewModel::previous,
-                    onSeek = nowPlayingViewModel::seek,
-                    onScrub = nowPlayingViewModel::scrub,
-                    onScrubEnd = nowPlayingViewModel::endScrub,
-                    onShuffle = nowPlayingViewModel::toggleShuffle,
-                    onRepeat = nowPlayingViewModel::cycleRepeat,
-                    onEnableVisualizer = { launcher.launch(REQUIRED_PERMISSIONS) },
-                    bottomInset = navBarHeight,
-                )
-            }
-            composable(Routes.AUDIO) {
-                val dspViewModel: DspViewModel = hiltViewModel()
-                val dspConfig by dspViewModel.config.collectAsStateWithLifecycle()
-                AudioProcessingScreen(
+                NavTab.DSP -> AudioProcessingScreen(
                     config = dspConfig,
                     onEnabled = dspViewModel::setEnabled,
                     onEqBand = dspViewModel::setEqBand,
@@ -176,58 +145,68 @@ fun AppNav() {
                     onFlat = dspViewModel::resetEq,
                     onCompressor = dspViewModel::setCompressor,
                     onLimiter = dspViewModel::setLimiter,
-                    onBack = { switchTab(Routes.LIBRARY) },
+                    onBack = { goToTab(NavTab.LIB) },
+                    bottomInset = navBarHeight,
                 )
-            }
-            composable(Routes.QUEUE) {
-                QueueScreen(
+                NavTab.QUE -> QueueScreen(
                     playback = nowPlayingState.playback,
-                    onBack = { switchTab(Routes.LIBRARY) },
+                    onBack = { goToTab(NavTab.LIB) },
                     onRemove = nowPlayingViewModel::removeFromQueue,
+                    onOpenTrack = { nowPlayingOpen = true },
+                    bottomInset = navBarHeight,
                 )
-            }
-            composable(Routes.SETTINGS) {
-                SettingsScreen(
+                NavTab.CFG -> SettingsScreen(
                     theme = themeConfig,
-                    onBack = { switchTab(Routes.LIBRARY) },
+                    onBack = { goToTab(NavTab.LIB) },
                     onAccent = settingsViewModel::setAccent,
                     onBackground = settingsViewModel::setBackground,
                     onFftBlockSize = settingsViewModel::setFftBlockSize,
+                    bottomInset = navBarHeight,
                 )
             }
+        }
+
+        if (nowPlayingState.playback.currentTrack != null && !nowPlayingOpen) {
+            MiniPlayer(
+                state = nowPlayingState.playback,
+                onClick = { nowPlayingOpen = true },
+                onPlayPause = nowPlayingViewModel::togglePlayPause,
+                onPrevious = nowPlayingViewModel::previous,
+                onNext = nowPlayingViewModel::next,
+                compact = true,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = navBarHeight),
+            )
         }
 
         Column(
             Modifier.align(Alignment.BottomCenter).onSizeChanged { navBarHeightPx = it.height },
         ) {
             MonoBottomNav(
-                selected = when (currentRoute) {
-                    Routes.SETTINGS -> NavTab.CFG
-                    Routes.AUDIO -> NavTab.DSP
-                    Routes.QUEUE -> NavTab.QUE
-                    Routes.NOW_PLAYING -> NavTab.NOW
-                    else -> NavTab.LIB
-                },
-                onSelect = { tab ->
-                    when (tab) {
-                        NavTab.LIB -> switchTab(Routes.LIBRARY)
-                        NavTab.DSP -> switchTab(Routes.AUDIO)
-                        NavTab.NOW -> navController.navigate(Routes.NOW_PLAYING)
-                        NavTab.QUE -> switchTab(Routes.QUEUE)
-                        NavTab.CFG -> switchTab(Routes.SETTINGS)
-                    }
-                },
+                selected = TABS[pagerState.currentPage],
+                onSelect = ::goToTab,
             )
         }
-        if (nowPlayingState.playback.currentTrack != null && currentRoute != Routes.NOW_PLAYING) {
-            MiniPlayer(
-                state = nowPlayingState.playback,
-                onClick = { navController.navigate(Routes.NOW_PLAYING) },
+
+        // Drawn last so it sits above the mini-player and the bottom nav, hiding both.
+        AnimatedVisibility(
+            visible = nowPlayingOpen,
+            enter = slideInVertically(tween(320)) { it } + fadeIn(tween(320)),
+            exit = slideOutVertically(tween(280)) { it } + fadeOut(tween(240)),
+        ) {
+            NowPlayingScreen(
+                state = nowPlayingState,
+                audioGranted = audioGranted,
+                onBack = { nowPlayingOpen = false },
+                onCycleGraphic = nowPlayingViewModel::cycleGraphic,
                 onPlayPause = nowPlayingViewModel::togglePlayPause,
-                onPrevious = nowPlayingViewModel::previous,
                 onNext = nowPlayingViewModel::next,
-                compact = currentRoute != Routes.NOW_PLAYING,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = navBarHeight),
+                onPrevious = nowPlayingViewModel::previous,
+                onSeek = nowPlayingViewModel::seek,
+                onScrub = nowPlayingViewModel::scrub,
+                onScrubEnd = nowPlayingViewModel::endScrub,
+                onShuffle = nowPlayingViewModel::toggleShuffle,
+                onRepeat = nowPlayingViewModel::cycleRepeat,
+                onEnableVisualizer = { launcher.launch(REQUIRED_PERMISSIONS) },
             )
         }
     }

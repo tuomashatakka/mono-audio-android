@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import android.media.MediaMetadataRetriever
 import androidx.compose.foundation.border
@@ -76,13 +77,13 @@ fun NowPlayingScreen(
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
     onEnableVisualizer: () -> Unit,
-    bottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
     val playback = state.playback
     var showTags by remember { mutableStateOf(false) }
-    Box(modifier = modifier.fillMaxSize()) {
+    // Opaque background so the full-screen overlay fully hides the pager and bottom nav behind it.
+    Box(modifier = modifier.fillMaxSize().background(palette.background)) {
         AlbumArt(
             track = playback.currentTrack,
             modifier = Modifier
@@ -94,7 +95,8 @@ fun NowPlayingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(top = 8.dp, start = 28.dp, end = 28.dp, bottom = bottomInset),
+                .navigationBarsPadding()
+                .padding(top = 8.dp, start = 32.dp, end = 32.dp),
         ) {
         // Header: caret back · NOW PLAYING · more
         Row(
@@ -108,7 +110,7 @@ fun NowPlayingScreen(
             MonoIconButton(MonoGlyph.MORE, "More", { showTags = true }, bordered = true, accent = palette.accent)
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(40.dp))
 
         GraphicArea(
             state = state,
@@ -120,7 +122,7 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxWidth(0.82f).aspectRatio(1f).align(Alignment.CenterHorizontally),
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(32.dp))
 
         // Title + favourite
         Row(verticalAlignment = Alignment.CenterVertically) {
