@@ -1,13 +1,14 @@
 name: Release
 
 # Pushes to develop: build, then publish a *draft* release using the build artifact.
-# Manual runs (workflow_dispatch): build, then publish a *real, non-draft* release
-# tagged v<versionName> — this is how a new version is cut. Dispatch it against the
-# branch/tag that carries the versionName you want to release.
+# Pushing a v*.*.* tag (or a manual workflow_dispatch): build, then publish a *real,
+# non-draft* release tagged v<versionName> with the APK attached — this is how a new
+# version is cut. Push the tag from the commit whose versionName you want to release.
 # Tests are intentionally NOT run here — they gate PRs and main via ci.yml.
 on:
   push:
     branches: [ develop ]
+    tags: [ 'v*.*.*' ]
   workflow_dispatch:
 
 permissions:
@@ -26,7 +27,7 @@ jobs:
       - uses: ./.github/actions/build
 
   publish:
-    name: Publish draft
+    name: Publish release
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -34,5 +35,6 @@ jobs:
       - uses: ./.github/actions/publish
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Manual dispatch publishes a real release; develop pushes stay drafts.
-          draft: ${{ github.event_name == 'workflow_dispatch' && 'false' || 'true' }}
+          # A v* tag push or a manual dispatch publishes a real release;
+          # develop pushes stay drafts.
+          draft: ${{ (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && 'false' || 'true' }}
