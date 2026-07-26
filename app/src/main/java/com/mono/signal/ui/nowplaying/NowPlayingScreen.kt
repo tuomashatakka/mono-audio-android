@@ -59,6 +59,8 @@ import com.mono.signal.ui.icons.MonoGlyph
 import com.mono.signal.ui.icons.MonoIcon
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
+import com.mono.signal.ui.theme.MonoRadius
+import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
 import com.mono.signal.viewmodel.NowPlayingUiState
 
@@ -96,11 +98,11 @@ fun NowPlayingScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(top = 8.dp, start = 32.dp, end = 32.dp),
+                .padding(top = MonoSpacing.xs, start = MonoSpacing.screenEdge, end = MonoSpacing.screenEdge),
         ) {
         // Header: caret back · NOW PLAYING · more
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = MonoSpacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             MonoIconButton(MonoGlyph.CARET_LEFT, "Back", onBack, bordered = true, accent = palette.accent)
@@ -110,7 +112,7 @@ fun NowPlayingScreen(
             MonoIconButton(MonoGlyph.MORE, "More", { showTags = true }, bordered = true, accent = palette.accent)
         }
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(MonoSpacing.xxl))
 
         GraphicArea(
             state = state,
@@ -122,7 +124,7 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxWidth(0.82f).aspectRatio(1f).align(Alignment.CenterHorizontally),
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(MonoSpacing.xl))
 
         // Title + favourite
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -134,7 +136,7 @@ fun NowPlayingScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(MonoSpacing.xxs))
                 Text(
                     text = playback.currentTrack?.artist ?: "—",
                     style = MonoTypography.bodyMedium,
@@ -151,7 +153,7 @@ fun NowPlayingScreen(
             )
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
 
         WaveformSeekBar(
             envelope = state.waveformEnvelope,
@@ -160,7 +162,7 @@ fun NowPlayingScreen(
             onScrub = onScrub,
             onScrubEnd = onScrubEnd,
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(MonoSpacing.xs))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatDuration(playback.positionMs), style = MonoTypography.bodySmall, color = palette.accent)
             val remaining = (playback.durationMs - playback.positionMs).coerceAtLeast(0L)
@@ -178,7 +180,7 @@ fun NowPlayingScreen(
             onNext = onNext,
             onShuffle = onShuffle,
             onRepeat = onRepeat,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = MonoSpacing.md),
         )
         }
         if (showTags) {
@@ -240,16 +242,16 @@ private fun GraphicArea(
                 NowPlayingGraphic.WAVE_3D -> Waveform3DGraph(
                     waveformLeft = state.frame.waveformLeft,
                     waveformRight = state.frame.waveformRight,
-                    modifier = Modifier.fillMaxSize().padding(18.dp),
+                    modifier = Modifier.fillMaxSize().padding(MonoSpacing.md),
                 )
                 NowPlayingGraphic.FFT -> FftGraph(
                     peakBands = state.frame.fftPeakBands,
                     rmsBands = state.frame.fftRmsBands,
-                    modifier = Modifier.fillMaxSize().padding(18.dp),
+                    modifier = Modifier.fillMaxSize().padding(MonoSpacing.md),
                 )
                 NowPlayingGraphic.STEREO_WIDTH -> StereoWidthGraph(
                     waveform = state.frame.waveform,
-                    modifier = Modifier.fillMaxSize().padding(18.dp),
+                    modifier = Modifier.fillMaxSize().padding(MonoSpacing.md),
                 )
             }
         }
@@ -263,7 +265,7 @@ private fun GraphicArea(
         MonoLabel(
             text = "— ${state.graphic.label}",
             color = palette.accent,
-            modifier = Modifier.align(Alignment.TopStart).padding(16.dp),
+            modifier = Modifier.align(Alignment.TopStart).padding(MonoSpacing.md),
         )
     }
 }
@@ -271,9 +273,9 @@ private fun GraphicArea(
 @Composable
 private fun VisualizerHint(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.padding(28.dp),
+        modifier = modifier.padding(MonoSpacing.lg),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(MonoSpacing.xs),
     ) {
         MonoIcon(MonoGlyph.NAV_SCN, tint = MonoColors.Fg3, size = 28.dp)
         Text(
@@ -311,12 +313,12 @@ private fun FileTagsDialog(
             modifier = Modifier
                 .widthIn(max = 520.dp)
                 .fillMaxWidth(0.88f)
-                .clip(RoundedCornerShape(3.dp))
+                .clip(RoundedCornerShape(MonoRadius.md))
                 .background(LocalMonoPalette.current.panelElevated)
-                .border(1.dp, LocalMonoPalette.current.accent.copy(alpha = 0.7f), RoundedCornerShape(3.dp))
+                .border(1.dp, LocalMonoPalette.current.accent.copy(alpha = 0.7f), RoundedCornerShape(MonoRadius.md))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(MonoSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(MonoSpacing.xs),
         ) {
             MonoLabel("— __ALL__ META TAGS", color = LocalMonoPalette.current.accent)
             OutlinedTextField(value = editTitle, onValueChange = { editTitle = it }, label = { Text("Title") })

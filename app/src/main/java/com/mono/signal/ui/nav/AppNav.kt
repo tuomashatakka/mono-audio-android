@@ -31,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +40,7 @@ import com.mono.signal.ui.components.NavTab
 import com.mono.signal.ui.library.LibraryScreen
 import com.mono.signal.ui.nowplaying.NowPlayingScreen
 import com.mono.signal.ui.settings.SettingsScreen
+import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.viewmodel.DspViewModel
 import com.mono.signal.viewmodel.LibraryViewModel
 import com.mono.signal.viewmodel.NowPlayingViewModel
@@ -135,7 +135,7 @@ fun AppNav() {
                     onAddToQueue = libraryViewModel::addToQueue,
                     onPlayNext = libraryViewModel::playNext,
                     onOpenSettings = { goToTab(NavTab.CFG) },
-                    contentPadding = PaddingValues(top = 8.dp, bottom = navBarHeight + 104.dp),
+                    contentPadding = PaddingValues(top = MonoSpacing.xs, bottom = navBarHeight + MonoSpacing.playerClearance),
                 )
                 NavTab.DSP -> AudioProcessingScreen(
                     config = dspConfig,

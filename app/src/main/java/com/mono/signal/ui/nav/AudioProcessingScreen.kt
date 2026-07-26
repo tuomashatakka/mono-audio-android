@@ -49,6 +49,8 @@ import com.mono.signal.ui.components.MonoLabel
 import com.mono.signal.ui.icons.MonoGlyph
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
+import com.mono.signal.ui.theme.MonoRadius
+import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
 import kotlin.math.roundToInt
 
@@ -72,13 +74,13 @@ fun AudioProcessingScreen(
     val palette = LocalMonoPalette.current
     Column(
         modifier = modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
-            .padding(top = 8.dp, start = 32.dp, end = 32.dp, bottom = bottomInset + 112.dp),
+            .padding(top = MonoSpacing.xs, start = MonoSpacing.screenEdge, end = MonoSpacing.screenEdge, bottom = bottomInset + MonoSpacing.playerClearance),
     ) {
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(top = MonoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
             MonoIconButton(MonoGlyph.CARET_LEFT, "Back", onBack)
             Spacer(Modifier.weight(1f)); MonoLabel("— AUDIO DSP", color = palette.accent); Spacer(Modifier.weight(1f)); Spacer(Modifier.size(44.dp))
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Audio processing", style = MonoTypography.displaySmall, color = MonoColors.Fg1, modifier = Modifier.weight(1f))
             Switch(
@@ -94,18 +96,18 @@ fun AudioProcessingScreen(
             if (config.enabled) "Processing active" else "Bypassed",
             style = MonoTypography.bodySmall, color = if (config.enabled) palette.accent else MonoColors.Fg3,
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
 
         EqBank(config = config, onEqBand = onEqBand, onPreset = onPreset, onFlat = onFlat)
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
         DspSection("COMPRESSOR") {
             DspSlider("Attack", "ms", 0f, 100f, config.compressor.attackMs) { onCompressor(config.compressor.copy(attackMs = it)) }
             DspSlider("Release", "ms", 20f, 800f, config.compressor.releaseMs) { onCompressor(config.compressor.copy(releaseMs = it)) }
             DspSlider("Threshold", "dB", -60f, 0f, config.compressor.thresholdDb) { onCompressor(config.compressor.copy(thresholdDb = it)) }
             DspSlider("Compression", ":1", 1f, 80f, config.compressor.ratio) { onCompressor(config.compressor.copy(ratio = it)) }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
         DspSection("LIMITER") {
             DspSlider("Threshold", "dB", -24f, 0f, config.limiter.thresholdDb) { onLimiter(config.limiter.copy(thresholdDb = it)) }
             DspSlider("Gain", "dB", -12f, 12f, config.limiter.gainDb) { onLimiter(config.limiter.copy(gainDb = it)) }
@@ -127,7 +129,7 @@ private fun EqBank(
         MonoLabel("— 12-BAND EQ", color = palette.accent)
         Spacer(Modifier.weight(1f))
         PillButton("FLAT", onClick = onFlat)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(MonoSpacing.xs))
         Box {
             PillButton("PRESETS", onClick = { presetsOpen = true })
             DropdownMenu(expanded = presetsOpen, onDismissRequest = { presetsOpen = false }) {
@@ -140,14 +142,14 @@ private fun EqBank(
             }
         }
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(MonoSpacing.sm))
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(2.dp))
-            .background(palette.panelElevated).padding(vertical = 16.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(MonoRadius.sm))
+            .background(palette.panelElevated).padding(vertical = MonoSpacing.md),
     ) {
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = MonoSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(MonoSpacing.xxs),
         ) {
             EQ_LABELS.forEachIndexed { index, label ->
                 val gain = config.eqBands.getOrElse(index) { 0f }
@@ -157,7 +159,7 @@ private fun EqBank(
                         style = MonoTypography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                         color = if (gain == 0f) MonoColors.Fg3 else palette.accent,
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(MonoSpacing.xxs))
                     VerticalSlider(
                         value = gain,
                         onValueChange = { onEqBand(index, it) },
@@ -165,7 +167,7 @@ private fun EqBank(
                         accent = palette.accent,
                         modifier = Modifier.height(150.dp).width(36.dp),
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(MonoSpacing.xxs))
                     Text(
                         label,
                         style = MonoTypography.bodySmall.copy(fontFamily = FontFamily.Monospace),
@@ -221,10 +223,10 @@ private fun VerticalSlider(
 private fun PillButton(label: String, onClick: () -> Unit) {
     val palette = LocalMonoPalette.current
     Box(
-        Modifier.clip(RoundedCornerShape(2.dp))
-            .border(1.dp, palette.accent.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+        Modifier.clip(RoundedCornerShape(MonoRadius.sm))
+            .border(1.dp, palette.accent.copy(alpha = 0.6f), RoundedCornerShape(MonoRadius.sm))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(horizontal = MonoSpacing.xs, vertical = MonoSpacing.xxs),
     ) {
         Text(label, style = MonoTypography.bodySmall.copy(fontFamily = FontFamily.Monospace), color = palette.accent)
     }
@@ -232,15 +234,15 @@ private fun PillButton(label: String, onClick: () -> Unit) {
 
 @Composable private fun DspSection(title: String, content: @Composable () -> Unit) {
     MonoLabel("— $title", color = LocalMonoPalette.current.accent)
-    Spacer(Modifier.height(12.dp))
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(2.dp)).background(LocalMonoPalette.current.panelElevated).padding(16.dp)) { content() }
+    Spacer(Modifier.height(MonoSpacing.sm))
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(MonoRadius.sm)).background(LocalMonoPalette.current.panelElevated).padding(MonoSpacing.md)) { content() }
 }
 
 @Composable private fun DspSlider(label: String, unit: String, min: Float, max: Float, value: Float, onChange: (Float) -> Unit) {
     val palette = LocalMonoPalette.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MonoTypography.bodySmall, color = MonoColors.Fg2, modifier = Modifier.weight(1f))
-        Box(Modifier.clip(RoundedCornerShape(2.dp)).border(1.dp, MonoColors.BorderSoft, RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Box(Modifier.clip(RoundedCornerShape(MonoRadius.sm)).border(1.dp, MonoColors.BorderSoft, RoundedCornerShape(MonoRadius.sm)).padding(horizontal = MonoSpacing.xs, vertical = MonoSpacing.xxs)) {
             Text("${value.toInt()} $unit", style = MonoTypography.bodySmall.copy(fontFamily = FontFamily.Monospace), color = palette.accent)
         }
     }

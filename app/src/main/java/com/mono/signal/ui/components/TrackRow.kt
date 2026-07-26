@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import com.mono.signal.model.Track
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
+import com.mono.signal.ui.theme.MonoRadius
+import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
 
 /** A library list row: artwork thumb · title/artist · duration. Highlights when active. */
@@ -32,15 +34,15 @@ fun TrackRow(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 14.dp),
+            .padding(horizontal = MonoSpacing.xxs, vertical = MonoSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(MonoSpacing.md),
     ) {
         AlbumArt(
             track = track,
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(2.dp)),
+                .clip(RoundedCornerShape(MonoRadius.sm)),
         )
         Column(Modifier.weight(1f)) {
             Text(

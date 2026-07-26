@@ -28,6 +28,7 @@ import com.mono.signal.ui.components.formatDuration
 import com.mono.signal.ui.icons.MonoGlyph
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
+import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
 
 @Composable
@@ -40,21 +41,21 @@ fun QueueScreen(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalMonoPalette.current
-    Column(modifier.fillMaxSize().statusBarsPadding().padding(top = 8.dp, start = 32.dp, end = 32.dp)) {
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(modifier.fillMaxSize().statusBarsPadding().padding(top = MonoSpacing.xs, start = MonoSpacing.screenEdge, end = MonoSpacing.screenEdge)) {
+        Row(Modifier.fillMaxWidth().padding(top = MonoSpacing.xs), verticalAlignment = Alignment.CenterVertically) {
             MonoIconButton(MonoGlyph.CARET_LEFT, "Back", onBack)
             Spacer(Modifier.weight(1f)); MonoLabel("— QUEUE", color = palette.accent); Spacer(Modifier.weight(1f)); Spacer(Modifier.size(44.dp))
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
         Text("Queue", style = MonoTypography.displaySmall, color = MonoColors.Fg1)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
         if (playback.queue.isEmpty()) {
             Text("No tracks queued yet. Swipe a library row to add music.", style = MonoTypography.bodyMedium, color = MonoColors.Fg3)
         } else {
-            LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = bottomInset + 112.dp)) {
+            LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = bottomInset + MonoSpacing.playerClearance)) {
                 itemsIndexed(playback.queue, key = { _, track -> track.id }) { index, track ->
                     val active = index == playback.queueIndex
-                    Row(Modifier.fillMaxWidth().clickable(onClick = onOpenTrack).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(Modifier.fillMaxWidth().clickable(onClick = onOpenTrack).padding(vertical = MonoSpacing.sm), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(MonoSpacing.sm)) {
                         Text(if (active) "▶" else (index + 1).toString().padStart(2, '0'), style = MonoTypography.bodySmall, color = if (active) palette.accent else MonoColors.Fg3)
                         AlbumArt(track, Modifier.size(44.dp))
                         Column(Modifier.weight(1f)) {
