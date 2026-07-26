@@ -52,6 +52,10 @@ import com.mono.signal.ui.theme.MonoColors
 import com.mono.signal.ui.theme.MonoRadius
 import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.ln
 import kotlin.math.roundToInt
 
 private val EQ_LABELS = listOf(
@@ -102,16 +106,56 @@ fun AudioProcessingScreen(
 
         Spacer(Modifier.height(MonoSpacing.lg))
         DspSection("COMPRESSOR") {
-            DspSlider("Attack", "ms", 0f, 100f, config.compressor.attackMs) { onCompressor(config.compressor.copy(attackMs = it)) }
-            DspSlider("Release", "ms", 20f, 800f, config.compressor.releaseMs) { onCompressor(config.compressor.copy(releaseMs = it)) }
-            DspSlider("Threshold", "dB", -60f, 0f, config.compressor.thresholdDb) { onCompressor(config.compressor.copy(thresholdDb = it)) }
-            DspSlider("Compression", ":1", 1f, 80f, config.compressor.ratio) { onCompressor(config.compressor.copy(ratio = it)) }
+            DspSlider(
+                "Attack", "ms",
+                DspConfig.ATTACK_MIN_MS, DspConfig.ATTACK_MAX_MS,
+                config.compressor.attackMs, logScale = true,
+            ) { onCompressor(config.compressor.copy(attackMs = it)) }
+            DspSlider(
+                "Release", "ms",
+                DspConfig.RELEASE_MIN_MS, DspConfig.RELEASE_MAX_MS,
+                config.compressor.releaseMs, logScale = true,
+            ) { onCompressor(config.compressor.copy(releaseMs = it)) }
+            DspSlider(
+                "Threshold", "dB",
+                DspConfig.COMP_THRESHOLD_MIN_DB, DspConfig.COMP_THRESHOLD_MAX_DB,
+                config.compressor.thresholdDb,
+            ) { onCompressor(config.compressor.copy(thresholdDb = it)) }
+            DspSlider(
+                "Compression", ":1",
+                DspConfig.RATIO_MIN, DspConfig.RATIO_MAX,
+                config.compressor.ratio,
+            ) { onCompressor(config.compressor.copy(ratio = it)) }
+            DspToggleRow(
+                label = "Makeup gain",
+                checked = config.compressor.makeupGainEnabled,
+                onCheckedChange = { onCompressor(config.compressor.copy(makeupGainEnabled = it)) },
+            )
+            if (config.compressor.makeupGainEnabled) {
+                DspSlider(
+                    "Makeup", "dB",
+                    DspConfig.MAKEUP_MIN_DB, DspConfig.MAKEUP_MAX_DB,
+                    config.compressor.makeupGainDb,
+                ) { onCompressor(config.compressor.copy(makeupGainDb = it)) }
+            }
         }
         Spacer(Modifier.height(MonoSpacing.lg))
         DspSection("LIMITER") {
-            DspSlider("Threshold", "dB", -24f, 0f, config.limiter.thresholdDb) { onLimiter(config.limiter.copy(thresholdDb = it)) }
-            DspSlider("Gain", "dB", -12f, 12f, config.limiter.gainDb) { onLimiter(config.limiter.copy(gainDb = it)) }
-            DspSlider("Release", "ms", 10f, 1000f, config.limiter.releaseMs) { onLimiter(config.limiter.copy(releaseMs = it)) }
+            DspSlider(
+                "Threshold", "dB",
+                DspConfig.LIM_THRESHOLD_MIN_DB, DspConfig.LIM_THRESHOLD_MAX_DB,
+                config.limiter.thresholdDb,
+            ) { onLimiter(config.limiter.copy(thresholdDb = it)) }
+            DspSlider(
+                "Gain", "dB",
+                DspConfig.LIM_GAIN_MIN_DB, DspConfig.LIM_GAIN_MAX_DB,
+                config.limiter.gainDb,
+            ) { onLimiter(config.limiter.copy(gainDb = it)) }
+            DspSlider(
+                "Release", "ms",
+                DspConfig.LIM_RELEASE_MIN_MS, DspConfig.LIM_RELEASE_MAX_MS,
+                config.limiter.releaseMs, logScale = true,
+            ) { onLimiter(config.limiter.copy(releaseMs = it)) }
         }
     }
 }
@@ -238,13 +282,79 @@ private fun PillButton(label: String, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(MonoRadius.sm)).background(LocalMonoPalette.current.panelElevated).padding(MonoSpacing.md)) { content() }
 }
 
-@Composable private fun DspSlider(label: String, unit: String, min: Float, max: Float, value: Float, onChange: (Float) -> Unit) {
+/**
+ * One labelled parameter slider. [logScale] maps the track exponentially between [min] and [max],
+ * which is what keeps the sub-millisecond end of an attack/release range dialable — on a linear
+ * track everything below ~10 ms collapses into the first few pixels.
+ */
+@Composable private fun DspSlider(
+    label: String,
+    unit: String,
+    min: Float,
+    max: Float,
+    value: Float,
+    logScale: Boolean = false,
+    onChange: (Float) -> Unit,
+) {
     val palette = LocalMonoPalette.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MonoTypography.bodySmall, color = MonoColors.Fg2, modifier = Modifier.weight(1f))
         Box(Modifier.clip(RoundedCornerShape(MonoRadius.sm)).border(1.dp, MonoColors.BorderSoft, RoundedCornerShape(MonoRadius.sm)).padding(horizontal = MonoSpacing.xs, vertical = MonoSpacing.xxs)) {
-            Text("${value.toInt()} $unit", style = MonoTypography.bodySmall.copy(fontFamily = FontFamily.Monospace), color = palette.accent)
+            Text(
+                "${formatParam(value, logScale)} $unit",
+                style = MonoTypography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                color = palette.accent,
+            )
         }
     }
-    Slider(value = value, onValueChange = onChange, valueRange = min..max, colors = SliderDefaults.colors(thumbColor = palette.accent, activeTrackColor = palette.accent))
+    val colors = SliderDefaults.colors(thumbColor = palette.accent, activeTrackColor = palette.accent)
+    if (logScale) {
+        Slider(
+            value = logPosition(value, min, max),
+            onValueChange = { onChange(logValue(it, min, max)) },
+            valueRange = 0f..1f,
+            colors = colors,
+        )
+    } else {
+        Slider(value = value, onValueChange = onChange, valueRange = min..max, colors = colors)
+    }
+}
+
+@Composable private fun DspToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val palette = LocalMonoPalette.current
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            label,
+            style = MonoTypography.bodySmall,
+            color = if (checked) palette.accent else MonoColors.Fg2,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = palette.accent,
+                checkedTrackColor = palette.accent.copy(alpha = 0.4f),
+            ),
+        )
+    }
+}
+
+/** 0..1 track position of [value] on a logarithmic [min]..[max] range. */
+private fun logPosition(value: Float, min: Float, max: Float): Float =
+    (ln(value.coerceIn(min, max) / min) / ln(max / min)).coerceIn(0f, 1f)
+
+/** Inverse of [logPosition]. */
+private fun logValue(position: Float, min: Float, max: Float): Float =
+    (min * exp(position.coerceIn(0f, 1f) * ln(max / min))).coerceIn(min, max)
+
+/**
+ * Readout precision that follows the magnitude, so a 0.02 ms attack reads as `0.02` instead of
+ * rounding to `0`. Only [fine] (logarithmic) params get decimals; dB and ratios stay whole.
+ */
+private fun formatParam(value: Float, fine: Boolean): String = when {
+    !fine -> value.roundToInt().toString()
+    abs(value) >= 10f -> value.roundToInt().toString()
+    abs(value) >= 1f -> String.format(Locale.US, "%.1f", value)
+    else -> String.format(Locale.US, "%.2f", value)
 }

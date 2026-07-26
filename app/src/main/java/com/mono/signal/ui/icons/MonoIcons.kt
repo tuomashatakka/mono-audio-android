@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
  * monospace-adjacent iconography of the MONO Signal reference rather than Material's filled set.
  */
 enum class MonoGlyph {
-    CARET_LEFT, CARET_RIGHT,
+    CARET_LEFT, CARET_RIGHT, CARET_UP, CARET_DOWN,
     PLAY, PAUSE, PREV, NEXT, SHUFFLE, REPEAT, REPEAT_ONE,
     SETTINGS, SORT, GROUP, HEART, HEART_FILLED, SEARCH, MORE,
     NAV_LIB, NAV_SCN, NAV_NOW, NAV_QUE, NAV_CFG,
@@ -50,6 +50,8 @@ private fun DrawScope.draw(glyph: MonoGlyph, c: Color, s: Float, sw: Float) {
     when (glyph) {
         MonoGlyph.CARET_LEFT -> { line(15f, 5f, 9f, 12f); line(9f, 12f, 15f, 19f) }
         MonoGlyph.CARET_RIGHT -> { line(9f, 5f, 15f, 12f); line(15f, 12f, 9f, 19f) }
+        MonoGlyph.CARET_UP -> { line(5f, 15f, 12f, 9f); line(12f, 9f, 19f, 15f) }
+        MonoGlyph.CARET_DOWN -> { line(5f, 9f, 12f, 15f); line(12f, 15f, 19f, 9f) }
 
         MonoGlyph.PLAY -> {
             val path = Path().apply {

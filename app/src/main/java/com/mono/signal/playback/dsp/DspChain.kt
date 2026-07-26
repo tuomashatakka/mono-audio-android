@@ -18,7 +18,14 @@ class DspChain(private val channelCount: Int) {
     fun configure(sampleRate: Int, config: DspConfig) {
         equalizer.configure(sampleRate, config.eqBands)
         val comp = config.compressor
-        compressor.configure(sampleRate, comp.attackMs, comp.releaseMs, comp.thresholdDb, comp.ratio)
+        compressor.configure(
+            sampleRate,
+            comp.attackMs,
+            comp.releaseMs,
+            comp.thresholdDb,
+            comp.ratio,
+            comp.effectiveMakeupGainDb,
+        )
         val lim = config.limiter
         limiter.configure(sampleRate, lim.thresholdDb, lim.gainDb, lim.releaseMs)
     }

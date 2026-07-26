@@ -36,9 +36,9 @@ class DspPreferences @Inject constructor(
 
     fun resetEq() = update { it.flattenedEq() }
 
-    fun setCompressor(compressor: DspConfig.Compressor) = update { it.copy(compressor = compressor) }
+    fun setCompressor(compressor: DspConfig.Compressor) = update { it.copy(compressor = compressor.coerced()) }
 
-    fun setLimiter(limiter: DspConfig.Limiter) = update { it.copy(limiter = limiter) }
+    fun setLimiter(limiter: DspConfig.Limiter) = update { it.copy(limiter = limiter.coerced()) }
 
     private inline fun update(transform: (DspConfig) -> DspConfig) {
         val next = transform(_config.value)
@@ -50,6 +50,8 @@ class DspPreferences @Inject constructor(
             .putFloat(KEY_C_RELEASE, next.compressor.releaseMs)
             .putFloat(KEY_C_THRESHOLD, next.compressor.thresholdDb)
             .putFloat(KEY_C_RATIO, next.compressor.ratio)
+            .putBoolean(KEY_C_MAKEUP_ON, next.compressor.makeupGainEnabled)
+            .putFloat(KEY_C_MAKEUP_DB, next.compressor.makeupGainDb)
             .putFloat(KEY_L_THRESHOLD, next.limiter.thresholdDb)
             .putFloat(KEY_L_GAIN, next.limiter.gainDb)
             .putFloat(KEY_L_RELEASE, next.limiter.releaseMs)
@@ -72,12 +74,14 @@ class DspPreferences @Inject constructor(
                 releaseMs = prefs.getFloat(KEY_C_RELEASE, defaults.compressor.releaseMs),
                 thresholdDb = prefs.getFloat(KEY_C_THRESHOLD, defaults.compressor.thresholdDb),
                 ratio = prefs.getFloat(KEY_C_RATIO, defaults.compressor.ratio),
-            ),
+                makeupGainEnabled = prefs.getBoolean(KEY_C_MAKEUP_ON, defaults.compressor.makeupGainEnabled),
+                makeupGainDb = prefs.getFloat(KEY_C_MAKEUP_DB, defaults.compressor.makeupGainDb),
+            ).coerced(),
             limiter = DspConfig.Limiter(
                 thresholdDb = prefs.getFloat(KEY_L_THRESHOLD, defaults.limiter.thresholdDb),
                 gainDb = prefs.getFloat(KEY_L_GAIN, defaults.limiter.gainDb),
                 releaseMs = prefs.getFloat(KEY_L_RELEASE, defaults.limiter.releaseMs),
-            ),
+            ).coerced(),
         )
     }
 
@@ -88,6 +92,8 @@ class DspPreferences @Inject constructor(
         const val KEY_C_RELEASE = "comp_release"
         const val KEY_C_THRESHOLD = "comp_threshold"
         const val KEY_C_RATIO = "comp_ratio"
+        const val KEY_C_MAKEUP_ON = "comp_makeup_enabled"
+        const val KEY_C_MAKEUP_DB = "comp_makeup_db"
         const val KEY_L_THRESHOLD = "lim_threshold"
         const val KEY_L_GAIN = "lim_gain"
         const val KEY_L_RELEASE = "lim_release"
