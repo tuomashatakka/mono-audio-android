@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mono.signal.ui.theme.LocalMonoPalette
+import com.mono.signal.ui.theme.MonoSpacing
 
 /** The thin neon edge line used as a section divider / header underline in the mockup. */
 @Composable
@@ -41,7 +42,7 @@ fun SectionEyebrow(
 ) {
     androidx.compose.foundation.layout.Column(modifier = modifier.fillMaxWidth()) {
         MonoLabel(text = "— $label")
-        androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.height(MonoSpacing.xxs))
         EdgeGradientLine()
     }
 }

@@ -53,6 +53,8 @@ import com.mono.signal.ui.icons.MonoGlyph
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
 import com.mono.signal.ui.theme.MonoLabelStyle
+import com.mono.signal.ui.theme.MonoRadius
+import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
 import com.mono.signal.viewmodel.LibraryUiState
 
@@ -76,9 +78,9 @@ fun LibraryScreen(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 32.dp),
+            .padding(horizontal = MonoSpacing.screenEdge),
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(MonoSpacing.sm))
 
         // Header row: overview label + sort / group / settings on the right edge.
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -88,12 +90,12 @@ fun LibraryScreen(
             GroupMenu(state.groupBy, onGroupBy, palette.accent)
             MonoIconButton(MonoGlyph.SETTINGS, "Settings", onOpenSettings, accent = palette.accent)
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(MonoSpacing.xs))
         Text("Library", style = MonoTypography.displaySmall, color = MonoColors.Fg1)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
 
         SearchField(state.search, onSearch, palette.accent)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(MonoSpacing.lg))
         EdgeGradientLine()
 
         when {
@@ -143,9 +145,9 @@ private fun SwipeableTrackRow(
 ) {
     val palette = LocalMonoPalette.current
     var offsetX by remember { mutableStateOf(0f) }
-    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(2.dp))) {
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(MonoRadius.sm))) {
         Row(
-            Modifier.matchParentSize().background(if (offsetX >= 0) palette.accent.copy(alpha = 0.18f) else MonoColors.Fg3.copy(alpha = 0.12f)).padding(horizontal = 18.dp),
+            Modifier.matchParentSize().background(if (offsetX >= 0) palette.accent.copy(alpha = 0.18f) else MonoColors.Fg3.copy(alpha = 0.12f)).padding(horizontal = MonoSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (offsetX >= 0) Arrangement.Start else Arrangement.End,
         ) {
@@ -193,9 +195,9 @@ private fun GroupHeader(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 14.dp),
+            .padding(horizontal = MonoSpacing.xxs, vertical = MonoSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(MonoSpacing.md),
     ) {
         MonoIconButton(
             glyph = if (collapsed) MonoGlyph.CARET_RIGHT else MonoGlyph.CARET_LEFT,
@@ -253,7 +255,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, accent: Color
         onValueChange = onChange,
         singleLine = true,
         placeholder = { Text("Search…", color = MonoColors.Fg4) },
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(2.dp)),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(MonoRadius.sm)),
         colors = TextFieldDefaults.colors(
             focusedContainerColor = palette.panelElevated,
             unfocusedContainerColor = palette.panelElevated,
@@ -292,7 +294,7 @@ private fun CenteredMessage(title: String, body: String, action: @Composable () 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MonoSpacing.sm),
             modifier = Modifier.fillMaxWidth(0.85f),
         ) {
             MonoLabel("— $title")

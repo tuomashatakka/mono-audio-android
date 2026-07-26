@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.mono.signal.model.RepeatMode
 import com.mono.signal.ui.icons.MonoGlyph
 import com.mono.signal.ui.theme.LocalMonoPalette
+import com.mono.signal.ui.theme.MonoSpacing
 
 /** Transport row from the mockup: shuffle · prev · [neon play] · next · repeat. */
 @Composable
@@ -26,7 +26,7 @@ fun TransportControls(
     val palette = LocalMonoPalette.current
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(MonoSpacing.sm, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MonoIconButton(

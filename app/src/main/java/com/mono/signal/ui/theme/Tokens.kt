@@ -10,13 +10,52 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 /**
+ * Semantic spacing scale — a 4dp-based t-shirt ramp that is the single source of truth for
+ * every layout gap, padding, and inset. Components reference `MonoSpacing.md` etc. instead of
+ * inlining `dp` literals, so the whole app's rhythm can be re-tuned in one place.
+ *
+ * The steps [md]…[xxxl] climb in even 8dp increments (16 · 24 · 32 · 40 · 48), which covers the
+ * app's real large gaps exactly; [xxs]…[sm] fill in the finer 4dp increments below.
+ */
+object MonoSpacing {
+    val none = 0.dp
+    val xxs = 4.dp
+    val xs = 8.dp
+    val sm = 12.dp
+    val md = 16.dp
+    val lg = 24.dp
+    val xl = 32.dp
+    val xxl = 40.dp
+    val xxxl = 48.dp
+    val huge = 64.dp
+
+    // ── Semantic layout roles (named by intent, composed from the scale) ──────
+    /** Default horizontal margin framing a full screen. */
+    val screenEdge = xl
+    /** Bottom gutter a scrolling page adds (on top of the nav-bar height) so its last row
+     *  clears the mini-player floating above the bottom nav. */
+    val playerClearance = huge + xxl
+}
+
+/**
+ * Corner radii. MONO is sharp by default, so the whole ramp stays near zero — surfaces read as
+ * flat, framed panels rather than rounded cards.
+ */
+object MonoRadius {
+    val none = 0.dp
+    val xs = 1.dp
+    val sm = 2.dp
+    val md = 3.dp
+}
+
+/**
  * The Android mirror of the MONO design canvas tokens (system/colors_and_type.css),
  * organised as one parametrized source of truth. Components read these instead of
  * inlining magic numbers, so the system can be re-tuned in a single place.
  *
- * Colour primitives live in [MonoColors]; the live, theme-driven palette in [MonoPalette].
- * This object carries everything else: gradients, spacing, radii, motion, elevation,
- * tracking, and the derived [MonoShapes] handed to MaterialTheme.
+ * Colour primitives live in [MonoColors]; the live, theme-driven palette in [MonoPalette];
+ * spacing in [MonoSpacing] and radii in [MonoRadius]. This object carries everything else:
+ * gradients, motion, elevation, tracking, sizing, and the derived [MonoShapes].
  */
 object MonoTokens {
 
@@ -48,24 +87,6 @@ object MonoTokens {
         ),
     )
 
-    // ── SPACING (4px base, --sp-*) ───────────────────────────────────────────
-    val sp1 = 4.dp
-    val sp2 = 8.dp
-    val sp3 = 12.dp
-    val sp4 = 16.dp
-    val sp5 = 20.dp
-    val sp6 = 24.dp
-    val sp8 = 32.dp
-    val sp10 = 40.dp
-    val sp12 = 48.dp
-    val sp16 = 64.dp
-    val sp20 = 80.dp
-
-    // ── RADII — MONO is sharp by default (--radius-*) ─────────────────────────
-    val radius0 = 0.dp
-    val radius1 = 1.dp
-    val radius2 = 2.dp
-
     // ── TRACKING (letter-spacing, --tracking-*) ──────────────────────────────
     val trackingTight = (-0.02).em
     val trackingWide = 0.08.em
@@ -96,9 +117,9 @@ object MonoTokens {
  * surfaces read as flat, framed panels rather than rounded cards.
  */
 val MonoShapes = Shapes(
-    extraSmall = RoundedCornerShape(MonoTokens.radius0),
-    small = RoundedCornerShape(MonoTokens.radius1),
-    medium = RoundedCornerShape(MonoTokens.radius2),
-    large = RoundedCornerShape(MonoTokens.radius2),
-    extraLarge = RoundedCornerShape(MonoTokens.radius2),
+    extraSmall = RoundedCornerShape(MonoRadius.none),
+    small = RoundedCornerShape(MonoRadius.xs),
+    medium = RoundedCornerShape(MonoRadius.sm),
+    large = RoundedCornerShape(MonoRadius.sm),
+    extraLarge = RoundedCornerShape(MonoRadius.sm),
 )

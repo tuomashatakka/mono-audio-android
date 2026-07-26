@@ -24,6 +24,8 @@ import com.mono.signal.model.PlaybackState
 import com.mono.signal.ui.icons.MonoGlyph
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
+import com.mono.signal.ui.theme.MonoRadius
+import com.mono.signal.ui.theme.MonoSpacing
 import com.mono.signal.ui.theme.MonoTypography
 
 /** Persistent playback bar with minified gradient progress and compact transport controls. */
@@ -50,13 +52,13 @@ fun MiniPlayer(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = if (compact) 8.dp else 12.dp),
+                .padding(horizontal = MonoSpacing.md, vertical = if (compact) MonoSpacing.xs else MonoSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(MonoSpacing.sm),
         ) {
             AlbumArt(
                 track = track,
-                modifier = Modifier.size(if (compact) 34.dp else 40.dp).clip(RoundedCornerShape(2.dp)),
+                modifier = Modifier.size(if (compact) 34.dp else 40.dp).clip(RoundedCornerShape(MonoRadius.sm)),
             )
             Column(Modifier.weight(1f)) {
                 Text(
@@ -74,7 +76,7 @@ fun MiniPlayer(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(MonoSpacing.xxs), verticalAlignment = Alignment.CenterVertically) {
                 MonoIconButton(MonoGlyph.PREV, "Previous", onPrevious, size = if (compact) 34.dp else 38.dp, iconSize = 16.dp)
                 MonoPlayButton(
                     isPlaying = state.isPlaying,

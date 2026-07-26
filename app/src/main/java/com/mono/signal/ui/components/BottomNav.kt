@@ -24,6 +24,7 @@ import com.mono.signal.ui.icons.MonoIcon
 import com.mono.signal.ui.theme.LocalMonoPalette
 import com.mono.signal.ui.theme.MonoColors
 import com.mono.signal.ui.theme.MonoLabelStyle
+import com.mono.signal.ui.theme.MonoSpacing
 
 enum class NavTab(val label: String, val glyph: MonoGlyph, val enabled: Boolean) {
     LIB("LIB", MonoGlyph.NAV_LIB, true),
@@ -46,7 +47,7 @@ fun MonoBottomNav(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(vertical = 16.dp),
+                .padding(vertical = MonoSpacing.md),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             NavTab.entries.forEach { tab ->
@@ -58,7 +59,7 @@ fun MonoBottomNav(
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(MonoSpacing.xxs),
                     modifier = Modifier
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -66,7 +67,7 @@ fun MonoBottomNav(
                             enabled = tab.enabled,
                             onClick = { onSelect(tab) },
                         )
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = MonoSpacing.xs),
                 ) {
                     MonoIcon(tab.glyph, tint = tint, size = 22.dp)
                     Text(
@@ -78,6 +79,6 @@ fun MonoBottomNav(
                 }
             }
         }
-        Spacer(Modifier.height(0.dp))
+        Spacer(Modifier.height(MonoSpacing.none))
     }
 }
